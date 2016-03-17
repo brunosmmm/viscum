@@ -9,3 +9,4 @@ class ModuleDataTypes:
     STRING_LIST = 6
     VOID_LIST = 7
     BOOLEAN = 8
+    DICT = 9
