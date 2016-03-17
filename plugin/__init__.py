@@ -128,6 +128,9 @@ class Module(object):
 
         return return_value
 
+    @classmethod
+    def get_module_type(cls):
+        return cls._module_desc.arg_name
 
     @classmethod
     def get_module_info(cls):
