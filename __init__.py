@@ -130,6 +130,23 @@ class ModuleManager(object):
         self.logger.info('Loaded module "{}"'.format(module_name))
         return module_name
 
+    def get_loaded_module_list(self):
+        return self.loaded_modules.keys()
+
+    def get_instance_type(self, instance_name):
+        if instance_name in self.loaded_modules:
+            return self.loaded_modules[instance_name].get_module_type()
+
+        self.logger.warn('requested instance "{}" not found'.format(instance_name))
+        return None
+
+    def get_module_structure(self, module_name):
+        if module_name in self.found_modules:
+            return self.found_modules[module_name].dump_module_structure()
+
+        self.logger.warn('requested module "{}" not found'.format(module_name))
+        return None
+
     def get_module_info(self, module_name):
         if module_name in self.found_modules:
             return self.found_modules[module_name].get_module_info()
@@ -142,6 +159,13 @@ class ModuleManager(object):
             return self.loaded_modules[module_name].get_property_value(property_name)
         except Exception:
             return None
+
+    def set_module_property(self, instance_name, property_name, value):
+        try:
+            self.loaded_modules[instance_name].set_property_value(property_name, value)
+            return True
+        except Exception:
+            return False
 
     def get_module_property_list(self, module_name):
         if module_name in self.found_modules:
