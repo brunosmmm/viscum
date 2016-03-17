@@ -5,9 +5,9 @@
 
 import importlib
 import logging
-from plugmgr.plugin import Module, ModuleArgument, ModuleCapabilities
-from plugmgr.plugin.exception import ModuleLoadError, ModuleAlreadyLoadedError, ModuleNotLoadedError, ModuleMethodError
-from plugmgr.exception import HookNotAvailableError
+from periodicpy.plugmgr.plugin import Module, ModuleArgument, ModuleCapabilities
+from periodicpy.plugmgr.plugin.exception import ModuleLoadError, ModuleAlreadyLoadedError, ModuleNotLoadedError, ModuleMethodError
+from periodicpy.plugmgr.exception import HookNotAvailableError
 import re
 
 MODULE_HANDLER_LOGGING_KWARGS = ['log_info', 'log_warning', 'log_error']
@@ -26,12 +26,12 @@ def handle_multiple_instance(module_name, loaded_module_list):
 
     return sorted(instance_list)[-1] + 1
 
-class DriverManagerHookActions(object):
+class ModuleManagerHookActions(object):
     NO_ACTION = 0
     LOAD_MODULE = 1
     UNLOAD_MODULE = 2
 
-class DriverManager(object):
+class ModuleManager(object):
     """Module manager class"""
     def __init__(self, central_log, plugin_path):
 
@@ -45,10 +45,9 @@ class DriverManager(object):
 
         self.custom_hooks = {}
 
+        self.plugin_path = plugin_path
         #discover modules
         self.discover_modules()
-
-        self.plugin_path = plugin_path
 
     def install_custom_hook(self, hook_name, callback):
         self.custom_hooks[hook_name] = callback
@@ -68,7 +67,7 @@ class DriverManager(object):
     def new_node_discovered_event(self, **kwargs):
         for attached_callback in self.attached_hooks['drvman.new_node']:
             if attached_callback[0](**kwargs):
-                if attached_callback[1] == DriverManagerHookActions.LOAD_MODULE:
+                if attached_callback[1] == ModuleManagerHookActions.LOAD_MODULE:
                     #load the module!
                     self.logger.debug('some hook returned true, loading module {}'.format(attached_callback[2]))
                     #module must accept same kwargs, this is mandatory with this discovery event

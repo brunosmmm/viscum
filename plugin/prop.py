@@ -1,4 +1,4 @@
-from plugmgr.plugin.dtype import ModuleDataTypes
+from periodicpy.plugmgr.plugin.dtype import ModuleDataTypes
 
 class ModulePropertyPermissions(object):
     READ = 0

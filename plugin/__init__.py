@@ -1,6 +1,6 @@
 from collections import namedtuple
-from plugmgr.plugin.exception import ModuleLoadError, ModuleNotLoadedError, ModuleInvalidPropertyError, ModulePropertyPermissionError, ModuleMethodError
-from plugmgr.plugin.prop import ModulePropertyPermissions
+from periodicpy.plugmgr.plugin.exception import ModuleLoadError, ModuleNotLoadedError, ModuleInvalidPropertyError, ModulePropertyPermissionError, ModuleMethodError
+from periodicpy.plugmgr.plugin.prop import ModulePropertyPermissions
 import json
 
 #simple description for arguments
