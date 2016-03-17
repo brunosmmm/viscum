@@ -1,0 +1,3 @@
+
+class HookNotAvailableError(Exception):
+    pass
