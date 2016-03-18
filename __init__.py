@@ -95,7 +95,7 @@ class ModuleManager(object):
 
             try:
                 the_mod = imp.load_source(module, '{}/{}/__init__.py'.format(self.plugin_path, module))
-                module_class = the_mod.discover_module(self)
+                module_class = the_mod.discover_module(modman=self, plugin_path='{}/{}/'.format(self.plugin_path, module))
                 self.found_modules[module_class.get_module_desc().arg_name] = module_class
                 self.logger.info('Discovered module "{}"'.format(module_class.get_module_desc().arg_name))
             except ImportError as error:
