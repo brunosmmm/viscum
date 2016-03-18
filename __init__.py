@@ -40,20 +40,32 @@ class ModuleManager(object):
         self.logger = logging.getLogger('{}.drvman'.format(central_log))
 
         #hooks
-        self.attached_hooks = {'drvman.new_node' : [],
-                               'drvman.rem_node' : []}
+        self.attached_hooks = {'modman.module_loaded' : []}
 
         self.custom_hooks = {}
+        self.custom_methods ={}
 
         self.plugin_path = plugin_path
-        #discover modules
-        self.discover_modules()
 
-    def install_custom_hook(self, hook_name, callback):
-        self.custom_hooks[hook_name] = callback
+    def install_custom_hook(self, hook_name):
+        self.logger.debug('custom hook {} installed'.format(hook_name))
+        self.custom_hooks[hook_name] = []
 
-    def install_driver_hook(self, attach_to, callback, action, driver_class):
-        #so simple?
+    def install_custom_method(self, method_name, callback):
+        self.logger.debug('custom method "{}" installed, calls {}'.format(method_name, callback))
+        self.custom_methods[method_name] = callback
+
+    def attach_custom_hook(self, attach_to, callback, action, driver_class):
+        if attach_to in self.custom_hooks:
+            self.custom_hooks[attach_to].append((callback, action, driver_class))
+            self.logger.debug('callback {} installed into custom hook {} with action {}'.format(callback,
+                                                                                                attach_to,
+                                                                                                action))
+            return
+
+        raise HookNotAvailableError('the requested hook is not available')
+
+    def attach_manager_hook(self, attach_to, callback, action, driver_class):
         if attach_to in self.attached_hooks:
             self.attached_hooks[attach_to].append((callback, action, driver_class))
             self.logger.debug('callback {} installed into hook {} with action {}'.format(callback,
@@ -62,22 +74,6 @@ class ModuleManager(object):
             return
 
         raise HookNotAvailableError('the requested hook is not available')
-
-    #default manager hooks
-    def new_node_discovered_event(self, **kwargs):
-        for attached_callback in self.attached_hooks['drvman.new_node']:
-            if attached_callback[0](**kwargs):
-                if attached_callback[1] == ModuleManagerHookActions.LOAD_MODULE:
-                    #load the module!
-                    self.logger.debug('some hook returned true, loading module {}'.format(attached_callback[2]))
-                    #module must accept same kwargs, this is mandatory with this discovery event
-                    self.load_module(attached_callback[2].get_module_desc().arg_name,
-                                     **kwargs)
-
-    #def driver_post_load_hook()
-
-    def node_removed_event(self, **kwargs):
-        pass
 
     def discover_modules(self):
 
@@ -120,6 +116,7 @@ class ModuleManager(object):
                                                                                    handler=self.module_handler,
                                                                                    **kwargs)
             self.logger.info('Loaded module "{}" as "{}"'.format(module_name, multi_inst_name))
+            self._trigger_manager_hook('modman.module_loaded', instance_name=multi_inst_name)
             return multi_inst_name
 
         #load (create object)
@@ -128,6 +125,8 @@ class ModuleManager(object):
                                                                            **kwargs)
 
         self.logger.info('Loaded module "{}"'.format(module_name))
+        #trigger hooks
+        self._trigger_manager_hook('modman.module_loaded', instance_name=module_name)
         return module_name
 
     def get_loaded_module_list(self):
@@ -229,9 +228,9 @@ class ModuleManager(object):
                 self._log_module_message(which_module, kwg, value)
                 return None
 
-            if kwg == 'call_custom_hook':
-                if value[0] in self.custom_hooks:
-                    return self.custom_hooks[value[0]](*value[1])
+            if kwg == 'call_custom_method':
+                if value[0] in self.custom_methods:
+                    return self.custom_methods[value[0]](*value[1])
 
     def _log_module_message(self, module, level, message):
 
@@ -241,3 +240,23 @@ class ModuleManager(object):
             self.logger.warning("{}: {}".format(module, message))
         elif level == 'log_error':
             self.logger.error("{}: {}".format(module, message))
+
+    def trigger_custom_hook(self, hook_name, **kwargs):
+        for attached_callback in self.custom_hooks[hook_name]:
+            if attached_callback[0](**kwargs):
+                if attached_callback[1] == ModuleManagerHookActions.LOAD_MODULE:
+                    #load the module!
+                    self.logger.debug('some hook returned true, loading module {}'.format(attached_callback[2]))
+                    #module must accept same kwargs, this is mandatory with this discovery event
+                    self.load_module(attached_callback[2].get_module_desc().arg_name,
+                                     **kwargs)
+
+    def _trigger_manager_hook(self, hook_name, **kwargs):
+        for attached_callback in self.attached_hooks[hook_name]:
+            if attached_callback[0](**kwargs):
+                if attached_callback[1] == ModuleManagerHookActions.LOAD_MODULE:
+                    #load the module!
+                    self.logger.debug('some hook returned true, loading module {}'.format(attached_callback[2]))
+                    #module must accept same kwargs, this is mandatory with this discovery event
+                    self.load_module(attached_callback[2].get_module_desc().arg_name,
+                                     **kwargs)
