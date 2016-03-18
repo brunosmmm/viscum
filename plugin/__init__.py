@@ -183,15 +183,13 @@ class Module(object):
         return method_list
 
     @classmethod
-    def dump_module_structure(cls, json_file):
+    def dump_module_structure(cls):
         struct_dict = {}
         struct_dict['module_desc'] = cls.get_module_info()
         struct_dict['module_properties'] = cls.get_module_properties()
         struct_dict['module_methods'] = cls.get_module_methods()
 
-        with open(json_file, 'w') as f:
-            json.dump(struct_dict, f)
-
+        return struct_dict
 
     def _automap_methods(self, protected_methods=True):
         for method_name, method in self._methods.iteritems():
