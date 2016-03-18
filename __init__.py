@@ -181,17 +181,17 @@ class ModuleManager(object):
         self.logger.warn('requested module "{}" not found'.format(module_name))
         return None
 
-    def call_module_method(self, instance_name, method_name, **kwargs):
-        if instance_name in self.found_modules:
+    def call_module_method(self, __instance_name, __method_name, **kwargs):
+        if __instance_name in self.found_modules:
             try:
-                return self.loaded_modules[instance_name].call_method(method_name, **kwargs)
+                return self.loaded_modules[__instance_name].call_method(__method_name, **kwargs)
             except ModuleMethodError as e:
-                self.logger.warn('call to method "{}" of instance "{}" failed with: "{}"'.format(method_name,
-                                                                                                 instance_name,
+                self.logger.warn('call to method "{}" of instance "{}" failed with: "{}"'.format(__method_name,
+                                                                                                 __instance_name,
                                                                                                  e.message))
                 return None
 
-        self.logger.warn('requested instance "{}" not found'.format(instance_name))
+        self.logger.warn('requested instance "{}" not found'.format(__instance_name))
         return None
 
     def list_loaded_modules(self):
