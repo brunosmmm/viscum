@@ -94,7 +94,7 @@ class ModuleManager(object):
                 continue
 
             try:
-                the_mod = imp.load_source(module, '{}/{}.py'.format(self.plugin_path, module))
+                the_mod = imp.load_source(module, '{}/{}/__init__.py'.format(self.plugin_path, module))
                 module_class = the_mod.discover_module(self)
                 self.found_modules[module_class.get_module_desc().arg_name] = module_class
                 self.logger.info('Discovered module "{}"'.format(module_class.get_module_desc().arg_name))
