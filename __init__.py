@@ -8,7 +8,7 @@ import imp
 import logging
 from periodicpy.plugmgr.plugin import Module, ModuleArgument, ModuleCapabilities
 from periodicpy.plugmgr.plugin.exception import ModuleLoadError, ModuleAlreadyLoadedError, ModuleNotLoadedError, ModuleMethodError
-from periodicpy.plugmgr.exception import HookNotAvailableError
+from periodicpy.plugmgr.exception import HookNotAvailableError, CannotUnloadError
 import re
 
 MODULE_HANDLER_LOGGING_KWARGS = ['log_info', 'log_warning', 'log_error']
@@ -63,9 +63,9 @@ class ModuleManager(object):
         self.logger.debug('custom method "{}" installed, calls {}'.format(method_name, callback))
         self.custom_methods[method_name] = callback
 
-    def attach_custom_hook(self, attach_to, callback, action, driver_class):
+    def attach_custom_hook(self, attach_to, callback, action, argument):
         if attach_to in self.custom_hooks:
-            self.custom_hooks[attach_to].append((callback, action, driver_class))
+            self.custom_hooks[attach_to].append((callback, action, argument))
             self.logger.debug('callback {} installed into custom hook {} with action {}'.format(callback,
                                                                                                 attach_to,
                                                                                                 action))
@@ -106,12 +106,16 @@ class ModuleManager(object):
                 self.logger.warning('could not register module {}: {}'.format(module,error.message))
 
     def load_module(self, module_name, **kwargs):
+        self._load_module(module_name, **kwargs)
+
+    def _load_module(self, module_name, loaded_by='modman', **kwargs):
         """Load a module that has been previously discovered"""
         if module_name not in self.found_modules:
             raise ModuleLoadError('invalid module name: "{}"'.format(module_name))
 
         #insert self object in kwargs for now
-        kwargs.update({'plugmgr' : self})
+        kwargs.update({'plugmgr' : self,
+                       'loaded_by' : loaded_by})
 
         if module_name in self.loaded_modules:
             if ModuleCapabilities.MultiInstanceAllowed not in self.found_modules[module_name].get_capabilities():
@@ -123,7 +127,7 @@ class ModuleManager(object):
             self.loaded_modules[multi_inst_name] = self.found_modules[module_name](module_id=multi_inst_name,
                                                                                    handler=self.module_handler,
                                                                                    **kwargs)
-            self.logger.info('Loaded module "{}" as "{}"'.format(module_name, multi_inst_name))
+            self.logger.info('Loaded module "{}" as "{}", loaded by "{}"'.format(module_name, multi_inst_name, loaded_by))
             self._trigger_manager_hook('modman.module_loaded', instance_name=multi_inst_name)
             return multi_inst_name
 
@@ -132,7 +136,7 @@ class ModuleManager(object):
                                                                            handler=self.module_handler,
                                                                            **kwargs)
 
-        self.logger.info('Loaded module "{}"'.format(module_name))
+        self.logger.info('Loaded module "{}", loaded by "{}"'.format(module_name, loaded_by))
         #trigger hooks
         self._trigger_manager_hook('modman.module_loaded', instance_name=module_name)
         return module_name
@@ -212,15 +216,24 @@ class ModuleManager(object):
         return attached_modules
 
     def unload_module(self, module_name):
+        self._unload_module(module_name)
+
+    def _unload_module(self, module_name, requester='modman'):
 
         if module_name not in self.loaded_modules:
             raise ModuleNotLoadedError('cant unload {}: module not loaded'.format(module_name))
 
+        if requester != self.loaded_modules[module_name].get_loaded_kwargs('loaded_by'):
+            if requester != 'modman':
+                raise CannotUnloadError('cannot unloaded: forbidden by module manager')
+
         #do unloading procedure
-        self.loaded_modules[module_name].unload_module()
+        self.loaded_modules[module_name].module_unload()
 
         #remove
         del self.loaded_modules[module_name]
+
+        self.logger.info('module "{}" unloaded by "{}"'.format(module_name, requester))
 
     def list_discovered_modules(self):
         return [x.get_module_desc() for x in self.found_modules.values()]
@@ -240,6 +253,15 @@ class ModuleManager(object):
                 if value[0] in self.custom_methods:
                     return self.custom_methods[value[0]](*value[1])
 
+            if kwg == 'attach_custom_hook':
+                self.attach_custom_hook(value[0], *value[1])
+
+            if kwg == 'load_module':
+                self._load_module(value[0], which_module, **value[1])
+
+            if kwg == 'unload_module':
+                self._unload_module(value[0], which_module)
+
     def _log_module_message(self, module, level, message):
 
         if level == 'log_info':
@@ -249,8 +271,8 @@ class ModuleManager(object):
         elif level == 'log_error':
             self.logger.error("{}: {}".format(module, message))
 
-    def trigger_custom_hook(self, hook_name, **kwargs):
-        for attached_callback in self.custom_hooks[hook_name]:
+    def _trigger_hooks(self, hook_dict, hook_name, **kwargs):
+        for attached_callback in hook_dict[hook_name]:
             if attached_callback[0](**kwargs):
                 if attached_callback[1] == ModuleManagerHookActions.LOAD_MODULE:
                     #load the module!
@@ -258,13 +280,13 @@ class ModuleManager(object):
                     #module must accept same kwargs, this is mandatory with this discovery event
                     self.load_module(attached_callback[2].get_module_desc().arg_name,
                                      **kwargs)
+                elif attached_callback[1] == ModuleManagerHookActions.UNLOAD_MODULE:
+                    #unload the attached module
+                    self.logger.debug('a hook required module {} to be unloaded'.format(attached_callback[2]))
+                    self.unload_module(attached_callback[2])
+
+    def trigger_custom_hook(self, hook_name, **kwargs):
+        self._trigger_hooks(self.custom_hooks, hook_name, **kwargs)
 
     def _trigger_manager_hook(self, hook_name, **kwargs):
-        for attached_callback in self.attached_hooks[hook_name]:
-            if attached_callback[0](**kwargs):
-                if attached_callback[1] == ModuleManagerHookActions.LOAD_MODULE:
-                    #load the module!
-                    self.logger.debug('some hook returned true, loading module {}'.format(attached_callback[2]))
-                    #module must accept same kwargs, this is mandatory with this discovery event
-                    self.load_module(attached_callback[2].get_module_desc().arg_name,
-                                     **kwargs)
+        self._trigger_hooks(self.attached_hooks, hook_name, **kwargs)
