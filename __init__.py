@@ -41,12 +41,19 @@ class ModuleManager(object):
         self.logger = logging.getLogger('{}.drvman'.format(central_log))
 
         #hooks
-        self.attached_hooks = {'modman.module_loaded' : []}
+        self.attached_hooks = {'modman.module_loaded' : [],
+                               'modman.module_unloaded' : [],
+                               'modman.tick' : []}
 
         self.custom_hooks = {}
-        self.custom_methods ={}
+        self.custom_methods = {}
 
         self.plugin_path = plugin_path
+        self.tick_counter = 0
+
+    def module_system_tick(self):
+        self.tick_counter += 1
+        self._trigger_manager_hook('modman.tick', uptime=self.tick_counter)
 
     def install_custom_hook(self, hook_name):
         self.logger.debug('custom hook {} installed'.format(hook_name))
