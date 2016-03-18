@@ -4,6 +4,7 @@
 """
 
 import importlib
+import imp
 import logging
 from periodicpy.plugmgr.plugin import Module, ModuleArgument, ModuleCapabilities
 from periodicpy.plugmgr.plugin.exception import ModuleLoadError, ModuleAlreadyLoadedError, ModuleNotLoadedError, ModuleMethodError
@@ -77,30 +78,30 @@ class ModuleManager(object):
 
     def discover_modules(self):
 
-        module_root = importlib.import_module(self.plugin_path)
+        module_root = imp.load_source('plugins', self.plugin_path+'/__init__.py')
         module_list = module_root.MODULES
 
         for module in module_list:
-
             #ignore root
             if module == '__init__':
                 continue
 
             try:
-                the_mod = importlib.import_module('{}.{}'.format(self.plugin_path, module))
+                the_mod = imp.load_source(module, '{}/{}.py'.format(self.plugin_path, module))
                 module_class = the_mod.discover_module(self)
                 self.found_modules[module_class.get_module_desc().arg_name] = module_class
                 self.logger.info('Discovered module "{}"'.format(module_class.get_module_desc().arg_name))
             except ImportError as error:
                 self.logger.warning('could not register python module: {}'.format(error.message))
             except Exception as error:
+                raise
                 #catch anything else because this cannot break the application
                 self.logger.warning('could not register module {}: {}'.format(module,error.message))
 
     def load_module(self, module_name, **kwargs):
         """Load a module that has been previously discovered"""
         if module_name not in self.found_modules:
-            raise ModuleLoadError('invalid module name')
+            raise ModuleLoadError('invalid module name: "{}"'.format(module_name))
 
         #insert self object in kwargs for now
         kwargs.update({'plugmgr' : self})
