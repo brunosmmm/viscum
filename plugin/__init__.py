@@ -1,10 +1,23 @@
 from collections import namedtuple
 from periodicpy.plugmgr.plugin.exception import ModuleLoadError, ModuleNotLoadedError, ModuleInvalidPropertyError, ModulePropertyPermissionError, ModuleMethodError
-from periodicpy.plugmgr.plugin.prop import ModulePropertyPermissions
+from periodicpy.plugmgr.plugin.prop import ModulePropertyPermissions, ModuleProperty
+from periodicpy.plugmgr.plugin.method import ModuleMethod, ModuleMethodArgument
 import json
 
 #simple description for arguments
 ModuleArgument = namedtuple('ModuleArgument', ['arg_name', 'arg_help'])
+
+def read_json_from_file(filename):
+    data = {}
+    with open(filename, 'r') as f:
+        data = json.load(f)
+
+    return data
+
+def write_json_from_dict(filename, data):
+    with open(filename, 'w') as f:
+        json.dump(f, data)
+
 
 class ModuleCapabilities(object):
     MultiInstanceAllowed = 0
@@ -137,9 +150,55 @@ class Module(object):
 
         #return some information (serializable)
         module_info = {}
+        module_info['module_type'] = cls._module_desc.arg_name
         module_info['module_desc'] = cls._module_desc.arg_help
 
         return module_info
+
+    @staticmethod
+    def build_module_descr(mod_info):
+        return ModuleArgument(arg_name=mod_info['module_type'], arg_help=mod_info['module_desc'])
+
+    @staticmethod
+    def build_module_property_list(mod_prop):
+        property_list = {}
+
+        for prop_name, prop_data in mod_prop.iteritems():
+            property_list[prop_name] = ModuleProperty(property_desc=prop_data['property_desc'],
+                                                      permissions=prop_data['permissions'],
+                                                      data_type=prop_data['data_type'])
+
+
+        return property_list
+
+    @staticmethod
+    def build_module_method_list(mod_methods):
+        method_list = {}
+
+        for method_name, method_data in mod_methods.iteritems():
+            arg_list = {}
+            for arg_name, arg_data in method_data['method_args'].iteritems():
+                arg_list[arg_name] = ModuleMethodArgument(argument_desc=arg_data['arg_desc'],
+                                                          required=arg_data['arg_required'],
+                                                          data_type=arg_data['arg_dtype'])
+
+            method_list[method_name] = ModuleMethod(method_desc=method_data['method_desc'],
+                                                    method_args=arg_list,
+                                                    method_return=method_data['method_return'])
+
+        return method_list
+
+    @staticmethod
+    def build_module_structure(mod_struct):
+        mod_descr = Module.build_module_descr(mod_struct['module_desc'])
+        mod_props = Module.build_module_property_list(mod_struct['module_properties'])
+        mod_methods = Module.build_module_method_list(mod_struct['module_methods'])
+
+        return (mod_descr, mod_props, mod_methods)
+
+    @staticmethod
+    def build_module_structure_from_file(filename):
+        return Module.build_module_structure(read_json_from_file(filename))
 
     @classmethod
     def get_module_properties(cls):
@@ -190,6 +249,10 @@ class Module(object):
         struct_dict['module_methods'] = cls.get_module_methods()
 
         return struct_dict
+
+    @classmethod
+    def read_module_structure(cls, module_desc):
+        return
 
     def _automap_methods(self, protected_methods=True):
         for method_name, method in self._methods.iteritems():
