@@ -1,4 +1,7 @@
 
+class MethodNotAvailableError(Exception):
+    pass
+
 class HookNotAvailableError(Exception):
     pass
 

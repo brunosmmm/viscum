@@ -6,9 +6,10 @@
 import importlib
 import imp
 import logging
+from collections import namedtuple
 from periodicpy.plugmgr.plugin import Module, ModuleArgument, ModuleCapabilities
 from periodicpy.plugmgr.plugin.exception import ModuleLoadError, ModuleAlreadyLoadedError, ModuleNotLoadedError, ModuleMethodError
-from periodicpy.plugmgr.exception import HookNotAvailableError, CannotUnloadError
+from periodicpy.plugmgr.exception import *
 import re
 
 MODULE_HANDLER_LOGGING_KWARGS = ['log_info', 'log_warning', 'log_error']
@@ -32,6 +33,30 @@ class ModuleManagerHookActions(object):
     LOAD_MODULE = 1
     UNLOAD_MODULE = 2
 
+class ModuleManagerHook(object):
+    def __init__(self, owner):
+        self.owner = owner
+        self.attached_callbacks = []
+
+    def attach_callback(self, callback):
+        if callback not in self.attached_callbacks:
+            self.attached_callbacks.append(callback)
+
+    def detach_callback(self, callback):
+        if callback in self.attached_callbacks:
+            self.attached_callbacks.remove(callback)
+
+    def find_callback_by_argument(self, argument):
+        attached_list = []
+        for callback in self.attached_callbacks:
+            if callback.argument == argument:
+                attached_list.append(callback)
+
+        return attached_list
+
+ModuleManagerMethod = namedtuple('ModuleManagerMethod', ['call', 'owner'])
+HookAttacher = namedtuple('HookAttacher', ['callback', 'action', 'argument'])
+
 class ModuleManager(object):
     """Module manager class"""
     def __init__(self, central_log, plugin_path):
@@ -41,12 +66,13 @@ class ModuleManager(object):
         self.logger = logging.getLogger('{}.drvman'.format(central_log))
 
         #hooks
-        self.attached_hooks = {'modman.module_loaded' : [],
-                               'modman.module_unloaded' : [],
-                               'modman.tick' : []}
+        self.attached_hooks = {'modman.module_loaded' : ModuleManagerHook('modman'),
+                               'modman.module_unloaded' : ModuleManagerHook('modman'),
+                               'modman.tick' : ModuleManagerHook('modman')}
 
         self.custom_hooks = {}
         self.custom_methods = {}
+        self.external_interrupts = {}
 
         self.plugin_path = plugin_path
         self.tick_counter = 0
@@ -56,16 +82,22 @@ class ModuleManager(object):
         self._trigger_manager_hook('modman.tick', uptime=self.tick_counter)
 
     def install_custom_hook(self, hook_name):
+        self._install_custom_hook(hook_name)
+
+    def _install_custom_hook(self, hook_name, installed_by='modman'):
         self.logger.debug('custom hook {} installed'.format(hook_name))
-        self.custom_hooks[hook_name] = []
+        self.custom_hooks[hook_name] = ModuleManagerHook(installed_by)
 
     def install_custom_method(self, method_name, callback):
+        self._install_custom_method(method_name, callback)
+
+    def _install_custom_method(self, method_name, callback, installed_by='modman'):
         self.logger.debug('custom method "{}" installed, calls {}'.format(method_name, callback))
-        self.custom_methods[method_name] = callback
+        self.custom_methods[method_name] = ModuleManagerMethod(call=callback, owner=installed_by)
 
     def attach_custom_hook(self, attach_to, callback, action, argument):
         if attach_to in self.custom_hooks:
-            self.custom_hooks[attach_to].append((callback, action, argument))
+            self.custom_hooks[attach_to].attach_callback(HookAttacher(callback=callback, action=action, argument=argument))
             self.logger.debug('callback {} installed into custom hook {} with action {}'.format(callback,
                                                                                                 attach_to,
                                                                                                 action))
@@ -75,13 +107,17 @@ class ModuleManager(object):
 
     def attach_manager_hook(self, attach_to, callback, action, driver_class):
         if attach_to in self.attached_hooks:
-            self.attached_hooks[attach_to].append((callback, action, driver_class))
+            self.attached_hooks[attach_to].attach_callback(HookAttacher(callback=callback, action=action, argument=driver_class))
             self.logger.debug('callback {} installed into hook {} with action {}'.format(callback,
                                                                                          attach_to,
                                                                                          action))
             return
 
         raise HookNotAvailableError('the requested hook is not available')
+
+    def install_interrupt_handler(self, interrupt_key, callback):
+        self.logger.debug('custom interrupt "{}" was installed, calls "{}"'.format(interrupt_key, callback))
+        self.external_interrupts[interrupt_key] = callback
 
     def discover_modules(self):
 
@@ -230,6 +266,40 @@ class ModuleManager(object):
         #do unloading procedure
         self.loaded_modules[module_name].module_unload()
 
+        #remove custom hooks
+        remove_hooks = []
+        for hook_name, hook in self.custom_hooks.iteritems():
+            if hook.owner == module_name:
+                remove_hooks.append(hook_name)
+
+        for hook in remove_hooks:
+            #notify attached
+            for attached in self.custom_hooks[hook].attached_callbacks:
+                if attached.argument in self.loaded_modules:
+                    self.loaded_modules[attached.argument].handler_communicate(reason='provider_unloaded')
+
+            del self.custom_hooks[hook]
+            self.logger.debug('removing custom hook: "{}"'.format(hook))
+
+        #remove custom methods
+        remove_methods = []
+        for method_name, method in self.custom_methods.iteritems():
+            if method.owner == module_name:
+                remove_methods.append(method_name)
+
+        for method in remove_methods:
+            del self.custom_methods[method]
+            self.logger.debug('removing custom method: "{}"'.format(method))
+
+        #detach hooks
+        for hook in self.custom_hooks:
+            for attached in hook.find_callback_by_argument(module_name):
+                hook.detach_callback(attached)
+
+        for hook in self.attached_hooks:
+            for attached in hook.find_callback_by_argument(module_name):
+                hook.detach_callback(attached)
+
         #remove
         del self.loaded_modules[module_name]
 
@@ -251,7 +321,9 @@ class ModuleManager(object):
 
             if kwg == 'call_custom_method':
                 if value[0] in self.custom_methods:
-                    return self.custom_methods[value[0]](*value[1])
+                    return self.custom_methods[value[0]].call(*value[1])
+                else:
+                    raise MethodNotAvailableError('requested method is not available')
 
             if kwg == 'attach_custom_hook':
                 self.attach_custom_hook(value[0], *value[1])
@@ -261,6 +333,9 @@ class ModuleManager(object):
 
             if kwg == 'unload_module':
                 self._unload_module(value[0], which_module)
+
+            if kwg == 'install_custom_hook':
+                self._install_custom_hook(value[0], which_module)
 
     def _log_module_message(self, module, level, message):
 
@@ -272,21 +347,24 @@ class ModuleManager(object):
             self.logger.error("{}: {}".format(module, message))
 
     def _trigger_hooks(self, hook_dict, hook_name, **kwargs):
-        for attached_callback in hook_dict[hook_name]:
-            if attached_callback[0](**kwargs):
-                if attached_callback[1] == ModuleManagerHookActions.LOAD_MODULE:
+        for attached_callback in hook_dict[hook_name].attached_callbacks:
+            if attached_callback.callback(**kwargs):
+                if attached_callback.action == ModuleManagerHookActions.LOAD_MODULE:
                     #load the module!
-                    self.logger.debug('some hook returned true, loading module {}'.format(attached_callback[2]))
+                    self.logger.debug('some hook returned true, loading module {}'.format(attached_callback.argument))
                     #module must accept same kwargs, this is mandatory with this discovery event
-                    self.load_module(attached_callback[2].get_module_desc().arg_name,
+                    self.load_module(attached_callback.argument.get_module_desc().arg_name,
                                      **kwargs)
-                elif attached_callback[1] == ModuleManagerHookActions.UNLOAD_MODULE:
+                elif attached_callback.action == ModuleManagerHookActions.UNLOAD_MODULE:
                     #unload the attached module
-                    self.logger.debug('a hook required module {} to be unloaded'.format(attached_callback[2]))
-                    self.unload_module(attached_callback[2])
+                    self.logger.debug('a hook required module {} to be unloaded'.format(attached_callback.argument))
+                    self.unload_module(attached_callback.argument)
 
     def trigger_custom_hook(self, hook_name, **kwargs):
         self._trigger_hooks(self.custom_hooks, hook_name, **kwargs)
 
     def _trigger_manager_hook(self, hook_name, **kwargs):
         self._trigger_hooks(self.attached_hooks, hook_name, **kwargs)
+
+    def external_interrupt(self, interrupt_key, **kwargs):
+        pass
