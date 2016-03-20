@@ -7,3 +7,9 @@ class HookNotAvailableError(Exception):
 
 class CannotUnloadError(Exception):
     pass
+
+class HookAlreadyInstalledError(Exception):
+    pass
+
+class MethodAlreadyInstalledError(Exception):
+    pass

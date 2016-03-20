@@ -85,15 +85,28 @@ class ModuleManager(object):
         self._install_custom_hook(hook_name)
 
     def _install_custom_hook(self, hook_name, installed_by='modman'):
+        if hook_name in self.custom_hooks:
+            raise HookAlreadyInstalledError('hook is already installed')
+
         self.logger.debug('custom hook {} installed'.format(hook_name))
         self.custom_hooks[hook_name] = ModuleManagerHook(installed_by)
 
     def install_custom_method(self, method_name, callback):
+
         self._install_custom_method(method_name, callback)
 
     def _install_custom_method(self, method_name, callback, installed_by='modman'):
+        if method_name in self.custom_methods:
+            raise MethodAlreadyInstalledError('method is already installed')
+
         self.logger.debug('custom method "{}" installed, calls {}'.format(method_name, callback))
         self.custom_methods[method_name] = ModuleManagerMethod(call=callback, owner=installed_by)
+
+    def call_custom_method(self, method_name, *args, **kwargs):
+        if method_name in self.custom_methods:
+            return self.custom_methods[method_name].call(*args, **kwargs)
+
+        raise MethodNotAvailableError('requested method is not available')
 
     def attach_custom_hook(self, attach_to, callback, action, argument):
         if attach_to in self.custom_hooks:
@@ -320,22 +333,50 @@ class ModuleManager(object):
                 return None
 
             if kwg == 'call_custom_method':
-                if value[0] in self.custom_methods:
-                    return self.custom_methods[value[0]].call(*value[1])
-                else:
-                    raise MethodNotAvailableError('requested method is not available')
+                try:
+                    return self.call_custom_method(value[0], *value[1])
+                except MethodNotAvailableError as ex:
+                    self.logger.debug('module "{}" tried to call invalid method: "{}"'.format(which_module, value[0]))
+                    self.loaded_modules[which_module].handler_communicate(reason='call_method_failed', exception=ex)
+                    return None
 
             if kwg == 'attach_custom_hook':
-                self.attach_custom_hook(value[0], *value[1])
+                try:
+                    self.attach_custom_hook(value[0], *value[1])
+                except HookNotAvailableError as ex:
+                    self.logger.debug('module "{}" tried to attach to invalid hook: "{}"'.format(which_module, value[0]))
+                    self.loaded_modules[which_module].handler_communicate(reason='attach_hook_failed', exception=ex)
+
+            if kwg == 'attach_manager_hook':
+                try:
+                    self.attach_manager_hook(value[0], *value[1])
+                except HookNotAvailableError as ex:
+                    self.logger.debug('module "{}" tried to attach to invalid hook: "{}"'.format(which_module, value[0]))
+                    self.loaded_modules[which_module].handler_communicate(reason='attach_hook_failed', exception=ex)
 
             if kwg == 'load_module':
-                self._load_module(value[0], which_module, **value[1])
+                try:
+                    self._load_module(value[0], which_module, **value[1])
+                except (ModuleLoadError, ModuleAlreadyLoadedError) as ex:
+                    self.loaded_modules[which_module].handler_communicate(reason='load_module_failed', exception=ex)
 
             if kwg == 'unload_module':
-                self._unload_module(value[0], which_module)
+                try:
+                    self._unload_module(value[0], which_module)
+                except (ModuleNotLoadedError, CannotUnloadError) as ex:
+                    self.loaded_modules[which_module].handler_communicate(reason='unload_module_failed', exception=ex)
 
             if kwg == 'install_custom_hook':
-                self._install_custom_hook(value[0], which_module)
+                try:
+                    self._install_custom_hook(value[0], which_module)
+                except HookAlreadyInstalledError as ex:
+                    self.loaded_modules[which_module].handler_communicate(reason='install_hook_failed', exception=ex)
+
+            if kwg == 'install_custom_method':
+                try:
+                    self._install_custom_method(value[0], value[1], which_module)
+                except MethodAlreadyInstalledError:
+                    self.loaded_modules[which_module].handler_communicate(reason='install_method_failed', exception=ex)
 
     def _log_module_message(self, module, level, message):
 
