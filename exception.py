@@ -1,4 +1,7 @@
 
+class InterruptAlreadyInstalledError(Exception):
+    pass
+
 class MethodNotAvailableError(Exception):
     pass
 

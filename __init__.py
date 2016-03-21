@@ -129,8 +129,14 @@ class ModuleManager(object):
         raise HookNotAvailableError('the requested hook is not available')
 
     def install_interrupt_handler(self, interrupt_key, callback):
+        self._install_interrupt_handler(interrupt_key, callback)
+
+    def _install_interrupt_handler(self, interrupt_key, callback, installed_by='modman'):
+        if interrupt_key in self.external_interrupts:
+            raise InterruptAlreadyInstalledError('interrupt is already installed')
+
         self.logger.debug('custom interrupt "{}" was installed, calls "{}"'.format(interrupt_key, callback))
-        self.external_interrupts[interrupt_key] = callback
+        self.external_interrupts[interrupt_key] = ModuleManagerMethod(call=callback, owner=installed_by)
 
     def discover_modules(self):
 
@@ -304,6 +310,16 @@ class ModuleManager(object):
             del self.custom_methods[method]
             self.logger.debug('removing custom method: "{}"'.format(method))
 
+        #remove interrupt handlers
+        remove_interrupts = []
+        for interrupt_name, interrupt in self.external_interrupts.iteritems():
+            if interrupt.owner == module_name:
+                remove_interrupts.append(interrupt_name)
+
+        for interrupt in remove_interrupts:
+            del self.external_interrupts[interrupt]
+            self.logger.debug('removing interrupt handler: "{}"'.format(interrupt))
+
         #detach hooks
         for hook in self.custom_hooks:
             for attached in hook.find_callback_by_argument(module_name):
@@ -378,6 +394,12 @@ class ModuleManager(object):
                 except MethodAlreadyInstalledError:
                     self.loaded_modules[which_module].handler_communicate(reason='install_method_failed', exception=ex)
 
+            if kwg == 'install_interrupt_handler':
+                try:
+                    self._install_interrupt_handler(value[0], value[1], which_module)
+                except InterruptAlreadyInstalledError:
+                    self.loaded_modules[which_module].handler_communicate(reason='install_interrupt_failed', exception=ex)
+
     def _log_module_message(self, module, level, message):
 
         if level == 'log_info':
@@ -408,4 +430,5 @@ class ModuleManager(object):
         self._trigger_hooks(self.attached_hooks, hook_name, **kwargs)
 
     def external_interrupt(self, interrupt_key, **kwargs):
-        pass
+        if interrupt_key in self.external_interrupts:
+            self.external_interrupts[interrupt_key].call(**kwargs)
