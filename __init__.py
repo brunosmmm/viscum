@@ -163,22 +163,42 @@ class ModuleManager(object):
     def load_module(self, module_name, **kwargs):
         self._load_module(module_name, **kwargs)
 
+    def _is_module_type_present(self, module_class_name):
+        for mod_name, mod_obj in self.loaded_modules.iteritems():
+            if mod_obj.get_module_type() == module_class_name:
+                return True
+
+        return False
+
     def _load_module(self, module_name, loaded_by='modman', **kwargs):
         """Load a module that has been previously discovered"""
         if module_name not in self.found_modules:
             raise ModuleLoadError('invalid module name: "{}"'.format(module_name))
 
+        if 'instance_name' not in kwargs:
+            instance_name = module_name
+        else:
+            instance_name = kwargs['instance_name']
+
+        if 'instance_suffix' in kwargs:
+            instance_name += '-{}'.format(kwargs['instance_suffix'])
+
         #insert self object in kwargs for now
         kwargs.update({'plugmgr' : self,
                        'loaded_by' : loaded_by})
 
-        if module_name in self.loaded_modules:
+        if self._is_module_type_present(module_name):
             if ModuleCapabilities.MultiInstanceAllowed not in self.found_modules[module_name].get_capabilities():
                 raise ModuleAlreadyLoadedError('module is already loaded')
 
+        if instance_name in self.loaded_modules:
             #handle multiple instances
-            multi_inst_name = module_name + '-{}'.format(handle_multiple_instance(module_name,
-                                                                                  self.loaded_modules.keys()))
+            if self.found_modules[module_name].get_multi_inst_suffix() == None:
+                multi_inst_name = instance_name + '-{}'.format(handle_multiple_instance(instance_name,
+                                                                                        self.loaded_modules.keys()))
+            else:
+                multi_inst_name = instance_name + '-{}'.format(self.found_modules[module_name].get_multi_inst_suffix())
+
             self.loaded_modules[multi_inst_name] = self.found_modules[module_name](module_id=multi_inst_name,
                                                                                    handler=self.module_handler,
                                                                                    **kwargs)
@@ -187,14 +207,14 @@ class ModuleManager(object):
             return multi_inst_name
 
         #load (create object)
-        self.loaded_modules[module_name] = self.found_modules[module_name](module_id=module_name,
+        self.loaded_modules[instance_name] = self.found_modules[module_name](module_id=instance_name,
                                                                            handler=self.module_handler,
                                                                            **kwargs)
 
-        self.logger.info('Loaded module "{}", loaded by "{}"'.format(module_name, loaded_by))
+        self.logger.info('Loaded module "{}" as "{}", loaded by "{}"'.format(module_name, instance_name, loaded_by))
         #trigger hooks
-        self._trigger_manager_hook('modman.module_loaded', instance_name=module_name)
-        return module_name
+        self._trigger_manager_hook('modman.module_loaded', instance_name=instance_name)
+        return instance_name
 
     def get_loaded_module_list(self):
         return self.loaded_modules.keys()

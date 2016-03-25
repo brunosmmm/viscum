@@ -283,3 +283,7 @@ class Module(object):
                 prop.setter = self.__getattribute__(setter_name+prop_name)
             except AttributeError:
                 pass
+
+    @classmethod
+    def get_multi_inst_suffix(self):
+        return None
