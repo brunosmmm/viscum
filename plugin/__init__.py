@@ -116,7 +116,7 @@ class Module(object):
 
         raise ModuleInvalidPropertyError('object does not have property: "{}"'.format(property_name))
 
-    def get_loaded_kwarg(self, arg_name):
+    def get_loaded_kwargs(self, arg_name):
         if arg_name in self._loaded_kwargs:
             return self._loaded_kwargs[arg_name]
 

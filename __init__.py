@@ -341,11 +341,11 @@ class ModuleManager(object):
             self.logger.debug('removing interrupt handler: "{}"'.format(interrupt))
 
         #detach hooks
-        for hook in self.custom_hooks:
+        for hook_name, hook in self.custom_hooks.iteritems():
             for attached in hook.find_callback_by_argument(module_name):
                 hook.detach_callback(attached)
 
-        for hook in self.attached_hooks:
+        for hook_name, hook in self.attached_hooks.iteritems():
             for attached in hook.find_callback_by_argument(module_name):
                 hook.detach_callback(attached)
 
@@ -392,7 +392,7 @@ class ModuleManager(object):
 
             if kwg == 'load_module':
                 try:
-                    self._load_module(value[0], which_module, **value[1])
+                    return self._load_module(value[0], which_module, **value[1])
                 except (ModuleLoadError, ModuleAlreadyLoadedError) as ex:
                     self.loaded_modules[which_module].handler_communicate(reason='load_module_failed', exception=ex)
 
