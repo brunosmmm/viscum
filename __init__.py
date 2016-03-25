@@ -268,7 +268,7 @@ class ModuleManager(object):
         return None
 
     def call_module_method(self, __instance_name, __method_name, **kwargs):
-        if __instance_name in self.found_modules:
+        if __instance_name in self.loaded_modules:
             try:
                 return self.loaded_modules[__instance_name].call_method(__method_name, **kwargs)
             except ModuleMethodError as e:
@@ -286,7 +286,7 @@ class ModuleManager(object):
 
         attached_modules = {}
         for module_name, module in self.loaded_modules.iteritems():
-            attached_modules[module_name] = module.get_loaded_kwarg('attached_node')
+            attached_modules[module_name] = module.get_loaded_kwargs('attached_node')
 
         return attached_modules
 
