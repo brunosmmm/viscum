@@ -3,6 +3,7 @@ from periodicpy.plugmgr.plugin.exception import ModuleLoadError, ModuleNotLoaded
 from periodicpy.plugmgr.plugin.prop import ModulePropertyPermissions, ModuleProperty
 from periodicpy.plugmgr.plugin.method import ModuleMethod, ModuleMethodArgument
 import json
+import copy
 
 #simple description for arguments
 ModuleArgument = namedtuple('ModuleArgument', ['arg_name', 'arg_help'])
@@ -37,6 +38,10 @@ class Module(object):
 
         #save loaded kwargs
         self._loaded_kwargs = dict(kwargs)
+
+        #create copies of static members
+        self._methods = copy.deepcopy(self._methods)
+        self._properties = copy.deepcopy(self._properties)
 
         #register module
         self.module_register(module_id, handler)
