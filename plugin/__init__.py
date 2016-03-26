@@ -115,7 +115,7 @@ class Module(object):
         if property_name in self._properties:
             if self._properties[property_name].permissions == ModulePropertyPermissions.WRITE or\
                self._properties[property_name].permissions == ModulePropertyPermissions.RW:
-                self._properties[property_name].setter(value)
+                return self._properties[property_name].setter(value)
             else:
                 raise ModulePropertyPermissionError('property "{}" does not have write permissions'.format(property_name))
 
