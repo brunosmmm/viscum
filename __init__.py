@@ -436,8 +436,11 @@ class ModuleManager(object):
                     #load the module!
                     self.logger.debug('some hook returned true, loading module {}'.format(attached_callback.argument))
                     #module must accept same kwargs, this is mandatory with this discovery event
-                    self.load_module(attached_callback.argument.get_module_desc().arg_name,
-                                     **kwargs)
+                    try:
+                        self.load_module(attached_callback.argument.get_module_desc().arg_name,
+                                         **kwargs)
+                    except Exception as ex:
+                        self.logger.error('loading of module of class "{}" failed with: {}'.format(attached_callback.argument.__name__, ex.message))
                 elif attached_callback.action == ModuleManagerHookActions.UNLOAD_MODULE:
                     #unload the attached module
                     self.logger.debug('a hook required module {} to be unloaded'.format(attached_callback.argument))
