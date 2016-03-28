@@ -150,9 +150,10 @@ class ModuleManager(object):
 
             try:
                 the_mod = imp.load_source(module, '{}/{}/__init__.py'.format(self.plugin_path, module))
+                self.logger.info('inspecting module file: "{}"'.format(module))
                 module_class = the_mod.discover_module(modman=self, plugin_path='{}/{}/'.format(self.plugin_path, module))
                 self.found_modules[module_class.get_module_desc().arg_name] = module_class
-                self.logger.info('Discovered module "{}"'.format(module_class.get_module_desc().arg_name))
+                self.logger.info('Discovery of module "{}" succeeded'.format(module_class.get_module_desc().arg_name))
             except ImportError as error:
                 self.logger.warning('could not register python module: {}'.format(error.message))
             except Exception as error:
