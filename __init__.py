@@ -8,7 +8,7 @@ import imp
 import logging
 from collections import namedtuple
 from periodicpy.plugmgr.plugin import Module, ModuleArgument, ModuleCapabilities
-from periodicpy.plugmgr.plugin.exception import ModuleLoadError, ModuleAlreadyLoadedError, ModuleNotLoadedError, ModuleMethodError
+from periodicpy.plugmgr.plugin.exception import ModuleLoadError, ModuleAlreadyLoadedError, ModuleNotLoadedError, ModuleMethodError, ModulePropertyPermissionError, ModuleInvalidPropertyError
 from periodicpy.plugmgr.exception import *
 import re
 
@@ -225,48 +225,73 @@ class ModuleManager(object):
             return self.loaded_modules[instance_name].get_module_type()
 
         self.logger.warn('requested instance "{}" not found'.format(instance_name))
-        return None
+        return {'status': 'error',
+                'error': 'invalid_instance'}
 
     def get_module_structure(self, module_name):
         if module_name in self.found_modules:
             return self.found_modules[module_name].dump_module_structure()
 
         self.logger.warn('requested module "{}" not found'.format(module_name))
-        return None
+        return {'status': 'error',
+                'error': 'invalid_module'}
 
     def get_module_info(self, module_name):
         if module_name in self.found_modules:
             return self.found_modules[module_name].get_module_info()
 
         self.logger.warn('requested module "{}" not found'.format(module_name))
-        return None
+        return {'status': 'error',
+                'error': 'invalid_module'}
 
     def get_module_property(self, module_name, property_name):
         try:
             return self.loaded_modules[module_name].get_property_value(property_name)
-        except Exception:
-            return None
+        except ModulePropertyPermissionError:
+            self.logger.warn('tried to read write-only property "{}" of instance "{}"'.format(property_name, module_name))
+            return {'status': 'error',
+                    'error': 'write_only'}
+        except ModuleInvalidPropertyError:
+            self.logger.error('property does not exist: "{}"'.format(property_name))
+            return {'status': 'error',
+                    'error': 'invalid_property'}
+        except KeyError:
+            self.logger.error('get_module_property: instance "{}" not loaded'.format(module_name))
+            return {'status': 'error',
+                    'error': 'invalid_instance'}
 
     def set_module_property(self, instance_name, property_name, value):
         try:
             self.loaded_modules[instance_name].set_property_value(property_name, value)
-            return True
-        except Exception:
-            return False
+            return {'status': 'ok'}
+        except ModulePropertyPermissionError:
+            self.logger.error('tried to write read-only property "{}" of instance "{}"'.format(property_name, instance_name))
+            return {'status': 'error',
+                    'error': 'read_only'}
+        except ModuleInvalidPropertyError:
+            self.logger.error('property does not exist: "{}"'.format(property_name))
+            return {'status': 'error',
+                    'error': 'invalid_property'}
+        except KeyError:
+            self.logger.error('get_module_property: instance "{}" not loaded'.format(instance_name))
+            return {'status': 'error',
+                    'error': 'invalid_instance'}
 
     def get_module_property_list(self, module_name):
         if module_name in self.found_modules:
             return self.found_modules[module_name].get_module_properties()
 
         self.logger.warn('requested module "{}" not found'.format(module_name))
-        return None
+        return {'status': 'error',
+                'error': 'invalid_module'}
 
     def get_module_method_list(self, module_name):
         if module_name in self.found_modules:
             return self.found_modules[module_name].get_module_methods()
 
         self.logger.warn('requested module "{}" not found'.format(module_name))
-        return None
+        return {'status': 'error',
+                'error': 'invalid_module'}
 
     def call_module_method(self, __instance_name, __method_name, **kwargs):
         if __instance_name in self.loaded_modules:
@@ -276,10 +301,12 @@ class ModuleManager(object):
                 self.logger.warn('call to method "{}" of instance "{}" failed with: "{}"'.format(__method_name,
                                                                                                  __instance_name,
                                                                                                  e.message))
-                return None
+                return {'status': 'error',
+                        'error': 'call_failed'}
 
         self.logger.warn('requested instance "{}" not found'.format(__instance_name))
-        return None
+        return {'status': 'error',
+                'error': 'invalid_instance'}
 
     def list_loaded_modules(self):
 
