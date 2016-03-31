@@ -1,6 +1,4 @@
 """ Plugin manager
-  @file plugmgr/__init__.py
-  @author Bruno Morais <brunosmmm@gmail.com>
 """
 
 import importlib
@@ -8,7 +6,8 @@ import imp
 import logging
 from collections import namedtuple
 from periodicpy.plugmgr.plugin import Module, ModuleArgument, ModuleCapabilities
-from periodicpy.plugmgr.plugin.exception import ModuleLoadError, ModuleAlreadyLoadedError, ModuleNotLoadedError, ModuleMethodError, ModulePropertyPermissionError, ModuleInvalidPropertyError
+from periodicpy.plugmgr.plugin.exception import ModuleLoadError, ModuleAlreadyLoadedError,\
+    ModuleNotLoadedError, ModuleMethodError, ModulePropertyPermissionError, ModuleInvalidPropertyError
 from periodicpy.plugmgr.exception import *
 import re
 
@@ -16,7 +15,8 @@ MODULE_HANDLER_LOGGING_KWARGS = ['log_info', 'log_warning', 'log_error']
 
 #helper functions
 def handle_multiple_instance(module_name, loaded_module_list):
-
+    """Handle multiple instance plugin loading, returns suffix based on instance count
+    """
     instance_list = []
     for module in loaded_module_list:
         m = re.match(r"{}-([0-9]+)".format(module_name), module)
@@ -29,24 +29,35 @@ def handle_multiple_instance(module_name, loaded_module_list):
     return sorted(instance_list)[-1] + 1
 
 class ModuleManagerHookActions(object):
+    """Actions executed on a hook returning true
+    """
     NO_ACTION = 0
     LOAD_MODULE = 1
     UNLOAD_MODULE = 2
 
 class ModuleManagerHook(object):
+    """Module manager hook descriptor class
+    """
     def __init__(self, owner):
         self.owner = owner
         self.attached_callbacks = []
 
     def attach_callback(self, callback):
+        """Attaches a callback to the hook
+        """
         if callback not in self.attached_callbacks:
             self.attached_callbacks.append(callback)
 
     def detach_callback(self, callback):
+        """Detaches callback from the hook
+        """
         if callback in self.attached_callbacks:
             self.attached_callbacks.remove(callback)
 
     def find_callback_by_argument(self, argument):
+        """Find an attached callbacks by looking at the arguments
+           specified for it
+        """
         attached_list = []
         for callback in self.attached_callbacks:
             if callback.argument == argument:
@@ -84,13 +95,20 @@ class ModuleManager(object):
         self.deferred_discoveries = {}
 
     def module_system_tick(self):
+        """Timer function called by main loop
+        """
         self.tick_counter += 1
         self._trigger_manager_hook('modman.tick', uptime=self.tick_counter)
 
     def install_custom_hook(self, hook_name):
+        """Installs a custom hook into the manager system
+        """
         self._install_custom_hook(hook_name)
 
     def _install_custom_hook(self, hook_name, installed_by='modman'):
+        """Inner function to actually install the custom hook, with
+           owner information
+        """
         if hook_name in self.custom_hooks:
             raise HookAlreadyInstalledError('hook is already installed')
 
@@ -98,10 +116,14 @@ class ModuleManager(object):
         self.custom_hooks[hook_name] = ModuleManagerHook(installed_by)
 
     def install_custom_method(self, method_name, callback):
-
+        """Install a custom method, made available to all loaded modules
+        """
         self._install_custom_method(method_name, callback)
 
     def _install_custom_method(self, method_name, callback, installed_by='modman'):
+        """Inner function to install the custom method, with
+           owner information
+        """
         if method_name in self.custom_methods:
             raise MethodAlreadyInstalledError('method is already installed')
 
@@ -109,12 +131,16 @@ class ModuleManager(object):
         self.custom_methods[method_name] = ModuleManagerMethod(call=callback, owner=installed_by)
 
     def call_custom_method(self, method_name, *args, **kwargs):
+        """Calls a custom method, if available
+        """
         if method_name in self.custom_methods:
             return self.custom_methods[method_name].call(*args, **kwargs)
 
         raise MethodNotAvailableError('requested method is not available')
 
     def attach_custom_hook(self, attach_to, callback, action, argument):
+        """Attaches a callback to a custom hook, if available
+        """
         if attach_to in self.custom_hooks:
             self.custom_hooks[attach_to].attach_callback(HookAttacher(callback=callback, action=action, argument=argument))
             self.logger.debug('callback {} installed into custom hook {} with action {}'.format(callback,
@@ -125,6 +151,8 @@ class ModuleManager(object):
         raise HookNotAvailableError('the requested hook is not available')
 
     def attach_manager_hook(self, attach_to, callback, action, driver_class):
+        """Attaches a callback to a manager default hook
+        """
         if attach_to in self.attached_hooks:
             self.attached_hooks[attach_to].attach_callback(HookAttacher(callback=callback, action=action, argument=driver_class))
             self.logger.debug('callback {} installed into hook {} with action {}'.format(callback,
@@ -135,9 +163,14 @@ class ModuleManager(object):
         raise HookNotAvailableError('the requested hook is not available')
 
     def install_interrupt_handler(self, interrupt_key, callback):
+        """Installs a custom interrupt handler
+        """
         self._install_interrupt_handler(interrupt_key, callback)
 
     def _install_interrupt_handler(self, interrupt_key, callback, installed_by='modman'):
+        """Inner function to install a interrupt handler,
+           with owner information
+        """
         if interrupt_key in self.external_interrupts:
             raise InterruptAlreadyInstalledError('interrupt is already installed')
 
@@ -145,52 +178,60 @@ class ModuleManager(object):
         self.external_interrupts[interrupt_key] = ModuleManagerMethod(call=callback, owner=installed_by)
 
     def require_discovered_module(self, module_type):
+        """Require a certain module to be present at discovery time
+           if the module is not present (not discovered), then raises an
+           exception that ultimately defers the discovery until such
+           module is discovered
+        """
         if self.discovery_active:
             if module_type not in self.found_modules:
                 raise DeferModuleDiscovery(module_type)
 
     def _module_discovery(self, module):
-
+        """Main module discovery routine, tries to load a module file
+        """
         #ignore root
-            if module == '__init__':
-                return
+        if module == '__init__':
+            return
 
-            try:
-                the_mod = imp.load_source(module, '{}/{}/__init__.py'.format(self.plugin_path, module))
-                self.logger.info('inspecting module file: "{}"'.format(module))
-                #guard discovery procedure
-                self.discovery_active = True
-                module_class = the_mod.discover_module(modman=self, plugin_path='{}/{}/'.format(self.plugin_path, module))
-                self.found_modules[module_class.get_module_desc().arg_name] = module_class
-                self.logger.info('Discovery of module "{}" succeeded'.format(module_class.get_module_desc().arg_name))
-            except ImportError as error:
-                self.logger.warning('could not register python module: {}'.format(error.message))
-            except DeferModuleDiscovery as ex:
-                self.logger.info('deferring discovery of module')
-                #hacky
-                self.deferred_discoveries[module] = ex.message
-            except Exception as error:
-                raise
-                #catch anything else because this cannot break the application
-                self.logger.warning('could not register module {}: {}'.format(module,error.message))
+        try:
+            the_mod = imp.load_source(module, '{}/{}/__init__.py'.format(self.plugin_path, module))
+            self.logger.info('inspecting module file: "{}"'.format(module))
+            #guard discovery procedure
+            self.discovery_active = True
+            module_class = the_mod.discover_module(modman=self, plugin_path='{}/{}/'.format(self.plugin_path, module))
+            self.found_modules[module_class.get_module_desc().arg_name] = module_class
+            self.logger.info('Discovery of module "{}" succeeded'.format(module_class.get_module_desc().arg_name))
+        except ImportError as error:
+            self.logger.warning('could not register python module: {}'.format(error.message))
+        except DeferModuleDiscovery as ex:
+            self.logger.info('deferring discovery of module')
+            #hacky
+            self.deferred_discoveries[module] = ex.message
+        except Exception as error:
+            raise
+            #catch anything else because this cannot break the application
+            self.logger.warning('could not register module {}: {}'.format(module,error.message))
 
-            #check for deferrals that depend on the previous loaded module
-            deferred_done = []
-            for deferred, dependency in self.deferred_discoveries.iteritems():
-                if dependency == module:
-                    #discover (recursive!)
-                    self.logger.debug('dependency for deferred "{}" met; discovering now'.format(deferred))
-                    self._module_discovery(deferred)
-                    deferred_done.append(deferred)
+        #check for deferrals that depend on the previous loaded module
+        deferred_done = []
+        for deferred, dependency in self.deferred_discoveries.iteritems():
+            if dependency == module:
+                #discover (recursive!)
+                self.logger.debug('dependency for deferred "{}" met; discovering now'.format(deferred))
+                self._module_discovery(deferred)
+                deferred_done.append(deferred)
 
-            #remove done deferrals
-            for deferred in deferred_done:
-                del self.deferred_discoveries[deferred]
+        #remove done deferrals
+        for deferred in deferred_done:
+            del self.deferred_discoveries[deferred]
 
-            self.discovery_active = False
+        self.discovery_active = False
 
     def discover_modules(self):
-
+        """Discovery routine wrapper, iterates through all found files in the
+           plugins subfolder
+        """
         module_root = imp.load_source('plugins', self.plugin_path+'/__init__.py')
         module_list = module_root.MODULES
 
