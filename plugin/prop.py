@@ -1,12 +1,17 @@
+"""Module property description
+"""
 from periodicpy.plugmgr.plugin.dtype import ModuleDataTypes
 
 class ModulePropertyPermissions(object):
+    """Property permissions enum"""
     READ = 0
     WRITE = 1
     RW = 2
 
 #driver property
 class ModuleProperty(object):
+    """Module property descriptor class
+    """
     def __init__(self,
                  property_desc,
                  permissions=ModulePropertyPermissions.RW,
@@ -14,7 +19,8 @@ class ModuleProperty(object):
                  setter=None,
                  data_type=ModuleDataTypes.VOID,
                  **kwargs):
-
+        """The constructor
+        """
         self.property_desc = property_desc
         self.permissions = permissions
         self.getter = getter
