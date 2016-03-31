@@ -77,6 +77,12 @@ class ModuleManager(object):
         self.plugin_path = plugin_path
         self.tick_counter = 0
 
+        #states
+        self.discovery_active = False
+
+        #module discovery deferral
+        self.deferred_discoveries = {}
+
     def module_system_tick(self):
         self.tick_counter += 1
         self._trigger_manager_hook('modman.tick', uptime=self.tick_counter)
@@ -138,28 +144,61 @@ class ModuleManager(object):
         self.logger.debug('custom interrupt "{}" was installed, calls "{}"'.format(interrupt_key, callback))
         self.external_interrupts[interrupt_key] = ModuleManagerMethod(call=callback, owner=installed_by)
 
+    def require_discovered_module(self, module_type):
+        if self.discovery_active:
+            if module_type not in self.found_modules:
+                raise DeferModuleDiscovery(module_type)
+
+    def _module_discovery(self, module):
+
+        #ignore root
+            if module == '__init__':
+                return
+
+            try:
+                the_mod = imp.load_source(module, '{}/{}/__init__.py'.format(self.plugin_path, module))
+                self.logger.info('inspecting module file: "{}"'.format(module))
+                #guard discovery procedure
+                self.discovery_active = True
+                module_class = the_mod.discover_module(modman=self, plugin_path='{}/{}/'.format(self.plugin_path, module))
+                self.found_modules[module_class.get_module_desc().arg_name] = module_class
+                self.logger.info('Discovery of module "{}" succeeded'.format(module_class.get_module_desc().arg_name))
+            except ImportError as error:
+                self.logger.warning('could not register python module: {}'.format(error.message))
+            except DeferModuleDiscovery as ex:
+                self.logger.info('deferring discovery of module')
+                #hacky
+                self.deferred_discoveries[module] = ex.message
+            except Exception as error:
+                raise
+                #catch anything else because this cannot break the application
+                self.logger.warning('could not register module {}: {}'.format(module,error.message))
+
+            #check for deferrals that depend on the previous loaded module
+            deferred_done = []
+            for deferred, dependency in self.deferred_discoveries.iteritems():
+                if dependency == module:
+                    #discover (recursive!)
+                    self.logger.debug('dependency for deferred "{}" met; discovering now'.format(deferred))
+                    self._module_discovery(deferred)
+                    deferred_done.append(deferred)
+
+            #remove done deferrals
+            for deferred in deferred_done:
+                del self.deferred_discoveries[deferred]
+
+            self.discovery_active = False
+
     def discover_modules(self):
 
         module_root = imp.load_source('plugins', self.plugin_path+'/__init__.py')
         module_list = module_root.MODULES
 
         for module in module_list:
-            #ignore root
-            if module == '__init__':
-                continue
+            self._module_discovery(module)
 
-            try:
-                the_mod = imp.load_source(module, '{}/{}/__init__.py'.format(self.plugin_path, module))
-                self.logger.info('inspecting module file: "{}"'.format(module))
-                module_class = the_mod.discover_module(modman=self, plugin_path='{}/{}/'.format(self.plugin_path, module))
-                self.found_modules[module_class.get_module_desc().arg_name] = module_class
-                self.logger.info('Discovery of module "{}" succeeded'.format(module_class.get_module_desc().arg_name))
-            except ImportError as error:
-                self.logger.warning('could not register python module: {}'.format(error.message))
-            except Exception as error:
-                raise
-                #catch anything else because this cannot break the application
-                self.logger.warning('could not register module {}: {}'.format(module,error.message))
+        if len(self.deferred_discoveries) > 0:
+            self.logger.warning('some modules could not be discovered because they had dependencies that were not met: {}'.format(self.deferred_discoveries.keys()))
 
     def load_module(self, module_name, **kwargs):
         self._load_module(module_name, **kwargs)
@@ -447,6 +486,10 @@ class ModuleManager(object):
                     self._install_interrupt_handler(value[0], value[1], which_module)
                 except InterruptAlreadyInstalledError:
                     self.loaded_modules[which_module].handler_communicate(reason='install_interrupt_failed', exception=ex)
+
+            if kwg == 'require_module_instance':
+                if value not in self.loaded_modules:
+                    raise ModuleLoadError('instance {} is not present')
 
     def _log_module_message(self, module, level, message):
 

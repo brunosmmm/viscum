@@ -16,3 +16,6 @@ class HookAlreadyInstalledError(Exception):
 
 class MethodAlreadyInstalledError(Exception):
     pass
+
+class DeferModuleDiscovery(Exception):
+    pass
