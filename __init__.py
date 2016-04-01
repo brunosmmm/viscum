@@ -209,7 +209,7 @@ class ModuleManager(object):
             #hacky
             self.deferred_discoveries[module] = ex.message
         except Exception as error:
-            raise
+            raise #debug
             #catch anything else because this cannot break the application
             self.logger.warning('could not register module {}: {}'.format(module,error.message))
 
@@ -241,18 +241,22 @@ class ModuleManager(object):
         if len(self.deferred_discoveries) > 0:
             self.logger.warning('some modules could not be discovered because they had dependencies that were not met: {}'.format(self.deferred_discoveries.keys()))
 
-    def load_module(self, module_name, **kwargs):
-        self._load_module(module_name, **kwargs)
-
     def _is_module_type_present(self, module_class_name):
+        """Returns wether any module of a certain type has been loaded
+        """
         for mod_name, mod_obj in self.loaded_modules.iteritems():
             if mod_obj.get_module_type() == module_class_name:
                 return True
 
         return False
 
+    def load_module(self, module_name, **kwargs):
+        """Load module by type name, with named arguments
+        """
+        self._load_module(module_name, **kwargs)
+
     def _load_module(self, module_name, loaded_by='modman', **kwargs):
-        """Load a module that has been previously discovered"""
+        """Load a module that has been previously discovered, with owner information"""
         if module_name not in self.found_modules:
             raise ModuleLoadError('invalid module name: "{}"'.format(module_name))
 
@@ -264,16 +268,17 @@ class ModuleManager(object):
         if 'instance_suffix' in kwargs:
             instance_name += '-{}'.format(kwargs['instance_suffix'])
 
-        #insert self object in kwargs for now
+        #insert self object in kwargs for now, for manipulation
         kwargs.update({'plugmgr' : self,
                        'loaded_by' : loaded_by})
 
+        #check if module type allows multiple instances
         if self._is_module_type_present(module_name):
             if ModuleCapabilities.MultiInstanceAllowed not in self.found_modules[module_name].get_capabilities():
                 raise ModuleAlreadyLoadedError('module is already loaded')
 
         if instance_name in self.loaded_modules:
-            #handle multiple instances
+            #handle multiple instances, append proper suffix to the type name automatically
             if self.found_modules[module_name].get_multi_inst_suffix() == None:
                 multi_inst_name = instance_name + '-{}'.format(handle_multiple_instance(instance_name,
                                                                                         self.loaded_modules.keys()))
@@ -298,9 +303,13 @@ class ModuleManager(object):
         return instance_name
 
     def get_loaded_module_list(self):
+        """Returns a list of the loaded instance names
+        """
         return self.loaded_modules.keys()
 
     def get_instance_type(self, instance_name):
+        """Returns module type or descriptive error
+        """
         if instance_name in self.loaded_modules:
             return self.loaded_modules[instance_name].get_module_type()
 
@@ -309,6 +318,8 @@ class ModuleManager(object):
                 'error': 'invalid_instance'}
 
     def get_module_structure(self, module_name):
+        """Retrieves the module's structure in a JSON-serializable dictionary or descriptive error
+        """
         if module_name in self.found_modules:
             return self.found_modules[module_name].dump_module_structure()
 
@@ -317,6 +328,8 @@ class ModuleManager(object):
                 'error': 'invalid_module'}
 
     def get_module_info(self, module_name):
+        """Returns basic module info, serializable or descriptive error
+        """
         if module_name in self.found_modules:
             return self.found_modules[module_name].get_module_info()
 
@@ -325,6 +338,8 @@ class ModuleManager(object):
                 'error': 'invalid_module'}
 
     def get_module_property(self, module_name, property_name):
+        """Returns the value of a module property or descriptive error
+        """
         try:
             return self.loaded_modules[module_name].get_property_value(property_name)
         except ModulePropertyPermissionError:
@@ -341,6 +356,9 @@ class ModuleManager(object):
                     'error': 'invalid_instance'}
 
     def set_module_property(self, instance_name, property_name, value):
+        """Sets the value of a module property. NO type checking is done
+           Returns status of the attempt
+        """
         try:
             self.loaded_modules[instance_name].set_property_value(property_name, value)
             return {'status': 'ok'}
@@ -358,6 +376,8 @@ class ModuleManager(object):
                     'error': 'invalid_instance'}
 
     def get_module_property_list(self, module_name):
+        """Returns a serializable dictionary of the module's properties
+        """
         if module_name in self.found_modules:
             return self.found_modules[module_name].get_module_properties()
 
@@ -366,6 +386,8 @@ class ModuleManager(object):
                 'error': 'invalid_module'}
 
     def get_module_method_list(self, module_name):
+        """Returns a serializable dictionary of the module's methods
+        """
         if module_name in self.found_modules:
             return self.found_modules[module_name].get_module_methods()
 
@@ -374,8 +396,12 @@ class ModuleManager(object):
                 'error': 'invalid_module'}
 
     def call_module_method(self, __instance_name, __method_name, **kwargs):
+        """Attempts to call a module method.
+           In case of failure returns a descriptive error
+        """
         if __instance_name in self.loaded_modules:
             try:
+                #TODO: for consistency return not the actual value but a dictionary?
                 return self.loaded_modules[__instance_name].call_method(__method_name, **kwargs)
             except ModuleMethodError as e:
                 self.logger.warn('call to method "{}" of instance "{}" failed with: "{}"'.format(__method_name,
@@ -389,20 +415,25 @@ class ModuleManager(object):
                 'error': 'invalid_instance'}
 
     def list_loaded_modules(self):
-
-        #build list of modules and return with to which node they're attached
+        """Returns a dictionary that contains the names of instances currently loaded as keys
+           and which module owns them as values. Note that if there is no specific owner,
+           they are owned by the module manager, shown as 'modman'
+        """
 
         attached_modules = {}
         for module_name, module in self.loaded_modules.iteritems():
-            attached_modules[module_name] = module.get_loaded_kwargs('attached_node')
+            attached_modules[module_name] = module.get_loaded_kwargs('loaded_by')
 
         return attached_modules
 
     def unload_module(self, module_name):
+        """Unload module wrapper function
+        """
         self._unload_module(module_name)
 
     def _unload_module(self, module_name, requester='modman'):
-
+        """Unload a module and automatically cleanup after it
+        """
         if module_name not in self.loaded_modules:
             raise ModuleNotLoadedError('cant unload {}: module not loaded'.format(module_name))
 
@@ -463,10 +494,14 @@ class ModuleManager(object):
         self.logger.info('module "{}" unloaded by "{}"'.format(module_name, requester))
 
     def list_discovered_modules(self):
+        """Returns a list of all module types that have been discovered
+        """
         return [x.get_module_desc() for x in self.found_modules.values()]
 
     def module_handler(self, which_module, *args, **kwargs):
-
+        """Function called by a live module to carry out various operations within the module manager scope
+           Returns various different values depending on the requested method
+        """
         if 'get_available_drivers' in args:
             return [x.get_module_desc().arg_name for x in self.found_modules.values()]
 
@@ -533,7 +568,8 @@ class ModuleManager(object):
                     raise ModuleLoadError('instance {} is not present')
 
     def _log_module_message(self, module, level, message):
-
+        """Helper function to execute module-level logging
+        """
         if level == 'log_info':
             self.logger.info("{}: {}".format(module, message))
         elif level == 'log_warning':
@@ -542,6 +578,9 @@ class ModuleManager(object):
             self.logger.error("{}: {}".format(module, message))
 
     def _trigger_hooks(self, hook_dict, hook_name, **kwargs):
+        """Trigger a registered hook with the passed arguments.
+           This will call all the callbacks that are attached to that hook.
+        """
         for attached_callback in hook_dict[hook_name].attached_callbacks:
             if attached_callback.callback(**kwargs):
                 if attached_callback.action == ModuleManagerHookActions.LOAD_MODULE:
@@ -559,11 +598,17 @@ class ModuleManager(object):
                     self.unload_module(attached_callback.argument)
 
     def trigger_custom_hook(self, hook_name, **kwargs):
+        """Hook trigger wrapper function for custom hooks
+        """
         self._trigger_hooks(self.custom_hooks, hook_name, **kwargs)
 
     def _trigger_manager_hook(self, hook_name, **kwargs):
+        """Hook trigger wrapper function for internal module manager hooks
+        """
         self._trigger_hooks(self.attached_hooks, hook_name, **kwargs)
 
     def external_interrupt(self, interrupt_key, **kwargs):
+        """External interrupt trigger
+        """
         if interrupt_key in self.external_interrupts:
             self.external_interrupts[interrupt_key].call(**kwargs)
