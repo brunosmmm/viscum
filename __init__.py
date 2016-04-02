@@ -9,7 +9,6 @@ from periodicpy.plugmgr.plugin import Module, ModuleArgument, ModuleCapabilities
 from periodicpy.plugmgr.plugin.exception import ModuleLoadError, ModuleAlreadyLoadedError,\
     ModuleNotLoadedError, ModuleMethodError, ModulePropertyPermissionError, ModuleInvalidPropertyError
 from periodicpy.plugmgr.exception import *
-from periodicpy.plugmgr.scripting import ModuleManagerScript, DeferScriptLoading
 import re
 import glob
 import os
@@ -37,6 +36,9 @@ class ModuleManagerHookActions(object):
     NO_ACTION = 0
     LOAD_MODULE = 1
     UNLOAD_MODULE = 2
+
+#import AFTER ModuleManagerHookActions declaration
+from periodicpy.plugmgr.scripting import ModuleManagerScript, DeferScriptLoading
 
 class ModuleManagerHook(object):
     """Module manager hook descriptor class
@@ -646,20 +648,23 @@ class ModuleManager(object):
            This will call all the callbacks that are attached to that hook.
         """
         for attached_callback in hook_dict[hook_name].attached_callbacks:
-            if attached_callback.callback(**kwargs):
-                if attached_callback.action == ModuleManagerHookActions.LOAD_MODULE:
-                    #load the module!
-                    self.logger.debug('some hook returned true, loading module {}'.format(attached_callback.argument))
-                    #module must accept same kwargs, this is mandatory with this discovery event
-                    try:
-                        self.load_module(attached_callback.argument.get_module_desc().arg_name,
-                                         **kwargs)
-                    except Exception as ex:
-                        self.logger.error('loading of module of class "{}" failed with: {}'.format(attached_callback.argument.__name__, ex.message))
-                elif attached_callback.action == ModuleManagerHookActions.UNLOAD_MODULE:
-                    #unload the attached module
-                    self.logger.debug('a hook required module {} to be unloaded'.format(attached_callback.argument))
-                    self.unload_module(attached_callback.argument)
+            try:
+                if attached_callback.callback(**kwargs):
+                    if attached_callback.action == ModuleManagerHookActions.LOAD_MODULE:
+                        #load the module!
+                        self.logger.debug('some hook returned true, loading module {}'.format(attached_callback.argument))
+                        #module must accept same kwargs, this is mandatory with this discovery event
+                        try:
+                            self.load_module(attached_callback.argument.get_module_desc().arg_name,
+                                             **kwargs)
+                        except Exception as ex:
+                            self.logger.error('loading of module of class "{}" failed with: {}'.format(attached_callback.argument.__name__, ex.message))
+                    elif attached_callback.action == ModuleManagerHookActions.UNLOAD_MODULE:
+                        #unload the attached module
+                        self.logger.debug('a hook required module {} to be unloaded'.format(attached_callback.argument))
+                        self.unload_module(attached_callback.argument)
+            except Exception as ex:
+                self.logger.error('failed to call function {} attached to "{}" with: {}'.format(attached_callback, hook_name, ex.message))
 
     def trigger_custom_hook(self, hook_name, **kwargs):
         """Hook trigger wrapper function for custom hooks
