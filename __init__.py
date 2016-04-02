@@ -513,7 +513,7 @@ class ModuleManager(object):
     def list_discovered_modules(self):
         """Returns a list of all module types that have been discovered
         """
-        return [x.get_module_desc() for x in self.found_modules.values()]
+        return dict([(name, mod.get_module_desc()) for name, mod in self.found_modules.iteritems()])
 
     def module_handler(self, which_module, *args, **kwargs):
         """Function called by a live module to carry out various operations within the module manager scope
