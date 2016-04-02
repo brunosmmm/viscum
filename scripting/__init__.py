@@ -128,6 +128,27 @@ class ModuleManagerScript(object):
         """
         self._modman.log_message(level, 'scripting: {}'.format(message))
 
+    def _require_module_instance(self, module_type, instance_name=None):
+        """Guard execution by requiring that a specific instance be present
+           If not present, script execution will be deferred until it is present
+        """
+        #detect if this type of module is available
+        if module_type not in self._modman.list_discovered_modules():
+            raise InvalidModuleError('module type {} is not available'.format(module_type))
+
+        #differentiate between multiple instance and single instance
+        if ModuleCapabilities.MultiInstanceAllowed in self._modman.get_module_capabilities(module_type):
+            if instance_name == None:
+                raise ValueError('must specify an instance name for module of type "{}"'.format(module_type))
+
+            _inst_name = instance_name
+        else:
+            _inst_name  = module_type
+
+        #check if is loaded, else defer
+        if _inst_name not in self._modman.get_loaded_module_list():
+            raise DeferScriptLoading({'type': module_type, 'inst': _inst_name})
+
     def initialize_script(self):
         """Initializes the compiled code
         """
@@ -136,7 +157,8 @@ class ModuleManagerScript(object):
             return
 
         #TODO: create scope with globals translated from the module manager
-        self.script_scope = {'_print_statement' : self._script_print_statement
+        self.script_scope = {'_print_statement' : self._script_print_statement,
+                             'require_instance': self._require_module_instance,
         }
 
         #print self.sanitized_code.body
