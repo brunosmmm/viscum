@@ -39,6 +39,10 @@ class ModuleManagerScript(object):
 
         #flags
         self._executed_once = False
+        self._name_set = False
+
+        #misc
+        self.name = '?'
 
         #auto-initialize
         if initialize:
@@ -125,7 +129,7 @@ class ModuleManagerScript(object):
         msg_list = [str(arg) for arg in args]
         message = ''.join(msg_list)
 
-        self._modman.log_message('log_info', 'scripting: {}'.format(message))
+        self._modman.log_message('log_info', 'scripting.{}: {}'.format(self.name, message))
 
     def _sanitizer_logging(self, level, message):
         """Logging for CodeSanitizer objects
@@ -163,6 +167,15 @@ class ModuleManagerScript(object):
         """
         self._modman.attach_custom_hook(hook_name, cb, ModuleManagerHookActions.NO_ACTION, None)
 
+    def _set_name(self, name):
+        """Set a friendly name for logging
+        """
+        if self._name_set:
+            return
+
+        self.name = name
+        self._name_set = True
+
     def initialize_script(self):
         """Initializes the compiled code
         """
@@ -174,7 +187,8 @@ class ModuleManagerScript(object):
         self.script_scope = {'_print_statement' : self._script_print_statement,
                              'require_instance': self._require_module_instance,
                              'attach_custom_hook': self._attach_custom_hook,
-                             'attach_man_hook': self._attach_man_hook
+                             'attach_man_hook': self._attach_man_hook,
+                             'set_name': self._set_name
         }
 
         #print self.sanitized_code.body
@@ -190,6 +204,9 @@ class ModuleManagerScript(object):
 
         #execute the body
         self._execute_code(self.instrumented_code)
+
+        #some things should not be allowed after main body execution ,remove from scope
+        del self.script_scope['set_name']
 
         #flag as initialized
         self._executed_once = True
