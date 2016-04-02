@@ -1,4 +1,5 @@
-
+"""Module manager-specific exceptions
+"""
 class InterruptAlreadyInstalledError(Exception):
     pass
 
