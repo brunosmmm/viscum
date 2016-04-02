@@ -5,11 +5,15 @@ import symtable
 import codegen
 import time
 from periodicpy.plugmgr.plugin import ModuleCapabilities
+from periodicpy.plugmgr import ModuleManagerHookActions
 
 class InvalidModuleError(Exception):
     pass
 
 class DeferScriptLoading(Exception):
+    pass
+
+class ScriptSyntaxError(Exception):
     pass
 
 class ModuleManagerScript(object):
@@ -149,6 +153,16 @@ class ModuleManagerScript(object):
         if _inst_name not in self._modman.get_loaded_module_list():
             raise DeferScriptLoading({'type': module_type, 'inst': _inst_name})
 
+    def _attach_man_hook(self, hook_name, cb):
+        """Attach to manager system hooks
+        """
+        self._modman.attach_manager_hook(hook_name, cb, ModuleManagerHookActions.NO_ACTION, None)
+
+    def _attach_custom_hook(self, hook_name, cb):
+        """Attach to custom hooks
+        """
+        self._modman.attach_custom_hook(hook_name, cb, ModuleManagerHookActions.NO_ACTION, None)
+
     def initialize_script(self):
         """Initializes the compiled code
         """
@@ -159,6 +173,8 @@ class ModuleManagerScript(object):
         #TODO: create scope with globals translated from the module manager
         self.script_scope = {'_print_statement' : self._script_print_statement,
                              'require_instance': self._require_module_instance,
+                             'attach_custom_hook': self._attach_custom_hook,
+                             'attach_man_hook': self._attach_man_hook
         }
 
         #print self.sanitized_code.body
@@ -209,12 +225,10 @@ class CodeSanitizer(ast.NodeTransformer):
         """Visit import statements, which will be removed
         """
         #Import statements not allowed
-        self.log('log_warning', 'import statements not allowed')
-        return None
+        raise ScriptSyntaxError('import statements are not allowed')
 
     def visit_ImportFrom(self, node):
-        self.log('log_warning', 'import statements not allowed')
-        return None
+        raise ScriptSyntaxError('import statements are not allowed')
 
     def visit_Print(self, node):
         #replace print statement with module manager-based logging
@@ -227,6 +241,9 @@ class CodeSanitizer(ast.NodeTransformer):
                 starargs=None,
                 kwargs=None)),
             node)
+
+    def visit_While(self, node):
+        raise ScriptSyntaxError('while statements are not allowed')
 
 
 class ModuleProxy(object):
