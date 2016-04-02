@@ -99,6 +99,7 @@ class ModuleManager(object):
 
         #module discovery deferral
         self.deferred_discoveries = {}
+        self.deferred_scripts = {}
 
     def module_system_tick(self):
         """Timer function called by main loop
@@ -247,16 +248,28 @@ class ModuleManager(object):
         if len(self.deferred_discoveries) > 0:
             self.logger.warning('some modules could not be discovered because they had dependencies that were not met: {}'.format(self.deferred_discoveries.keys()))
 
+    def _discover_script(self, script):
+        """Discovery process of a single script
+        """
+        try:
+            self.scripts[script] = ModuleManagerScript(script, self, initialize=True)
+        except DeferScriptLoading as ex:
+            self.logger.debug('deferring load of script {}, which requires module {} to be active'.format(script, ex.message))
+            #put on deferred list
+            if ex.message['type'] not in self.deferred_scripts:
+                self.deferred_scripts[ex.message['type']] = {script : {'req_inst': ex.message['inst']}}
+            else:
+                self.deferred_scripts[ex.message['type']].update({script: {'req_inst': ex.message['inst']}})
+        except Exception as ex:
+            self.logger.warning('failed to load script {} with: {}'.format(script, ex.message))
+
     def discover_scripts(self):
         """Discover available scripts
         """
         script_files = glob.glob(os.path.join(self.script_path, '*.py'))
 
         for script in script_files:
-            try:
-                self.scripts[script] = ModuleManagerScript(script, self, initialize=True)
-            except DeferScriptLoading as ex:
-                self.logger.debug('deferring load of script {}, which requires module {}'.format(script, ex.message))
+            self._discover_script(script)
 
     def _is_module_type_present(self, module_class_name):
         """Returns wether any module of a certain type has been loaded
@@ -317,12 +330,35 @@ class ModuleManager(object):
         self.logger.info('Loaded module "{}" as "{}", loaded by "{}"'.format(module_name, instance_name, loaded_by))
         #trigger hooks
         self._trigger_manager_hook('modman.module_loaded', instance_name=instance_name)
+
+        #look for scripts that have been deferred from loading
+        for mod_name, script_list in self.deferred_scripts.iteritems():
+            for script_path, attrs in script_list.iteritems():
+                if mod_name == module_name:
+                    #check if specific instance is needed
+                    if attrs['req_inst'] != '':
+                        if instance_name == '{}-{}'.format(mod_name, attrs['req_inst']):
+                            #requirements met, load script
+                            self._discover_script(script_path)
+                        elif instance_name == attrs['req_inst']: #not multi isntance
+                            self._discover_script(script_path)
+
         return instance_name
 
     def get_loaded_module_list(self):
         """Returns a list of the loaded instance names
         """
         return self.loaded_modules.keys()
+
+    def get_instance_list_by_type(self, module_type):
+        """Returns a list of module instances (loaded) with the requested type
+        """
+        instances = []
+        for inst_name, mod in self.loaded_modules.iteritems():
+            if mod.get_module_type() == module_type:
+                instances.append(inst_name)
+
+        return instances
 
     def get_instance_type(self, instance_name):
         """Returns module type or descriptive error
@@ -333,6 +369,12 @@ class ModuleManager(object):
         self.logger.warn('requested instance "{}" not found'.format(instance_name))
         return {'status': 'error',
                 'error': 'invalid_instance'}
+
+    def get_module_capabilities(self, module_name):
+        """Returns module capabilities
+        """
+        if module_name in self.found_modules:
+            return self.found_modules[module_name].get_capabilities()
 
     def get_module_structure(self, module_name):
         """Retrieves the module's structure in a JSON-serializable dictionary or descriptive error
