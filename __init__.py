@@ -9,7 +9,10 @@ from periodicpy.plugmgr.plugin import Module, ModuleArgument, ModuleCapabilities
 from periodicpy.plugmgr.plugin.exception import ModuleLoadError, ModuleAlreadyLoadedError,\
     ModuleNotLoadedError, ModuleMethodError, ModulePropertyPermissionError, ModuleInvalidPropertyError
 from periodicpy.plugmgr.exception import *
+from periodicpy.plugmgr.scripting import ModuleManagerScript, DeferScriptLoading
 import re
+import glob
+import os
 
 MODULE_HANDLER_LOGGING_KWARGS = ['log_info', 'log_warning', 'log_error']
 
@@ -70,7 +73,7 @@ HookAttacher = namedtuple('HookAttacher', ['callback', 'action', 'argument'])
 
 class ModuleManager(object):
     """Module manager class"""
-    def __init__(self, central_log, plugin_path):
+    def __init__(self, central_log, plugin_path, script_path):
 
         self.found_modules = {}
         self.loaded_modules = {}
@@ -85,7 +88,10 @@ class ModuleManager(object):
         self.custom_methods = {}
         self.external_interrupts = {}
 
+        self.scripts = {}
+
         self.plugin_path = plugin_path
+        self.script_path = script_path
         self.tick_counter = 0
 
         #states
@@ -240,6 +246,17 @@ class ModuleManager(object):
 
         if len(self.deferred_discoveries) > 0:
             self.logger.warning('some modules could not be discovered because they had dependencies that were not met: {}'.format(self.deferred_discoveries.keys()))
+
+    def discover_scripts(self):
+        """Discover available scripts
+        """
+        script_files = glob.glob(os.path.join(self.script_path, '*.py'))
+
+        for script in script_files:
+            try:
+                self.scripts[script] = ModuleManagerScript(script, self, initialize=True)
+            except DeferScriptLoading as ex:
+                self.logger.debug('deferring load of script {}, which requires module {}'.format(script, ex.message))
 
     def _is_module_type_present(self, module_class_name):
         """Returns wether any module of a certain type has been loaded
