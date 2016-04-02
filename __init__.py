@@ -570,12 +570,17 @@ class ModuleManager(object):
     def _log_module_message(self, module, level, message):
         """Helper function to execute module-level logging
         """
+        self.log_message(level, "{}: {}".format(module, message))
+
+    def log_message(self, level, message):
+        """Helper function for general logging
+        """
         if level == 'log_info':
-            self.logger.info("{}: {}".format(module, message))
+            self.logger.info(message)
         elif level == 'log_warning':
-            self.logger.warning("{}: {}".format(module, message))
+            self.logger.warning(message)
         elif level == 'log_error':
-            self.logger.error("{}: {}".format(module, message))
+            self.logger.error(message)
 
     def _trigger_hooks(self, hook_dict, hook_name, **kwargs):
         """Trigger a registered hook with the passed arguments.
