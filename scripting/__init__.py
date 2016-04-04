@@ -16,6 +16,9 @@ class DeferScriptLoading(Exception):
 class ScriptSyntaxError(Exception):
     pass
 
+class CancelScriptLoading(Exception):
+    pass
+
 class ModuleManagerScript(object):
     """Script parser and container class
     """
@@ -176,6 +179,16 @@ class ModuleManagerScript(object):
         self.name = name
         self._name_set = True
 
+    def _cancel_exec(self, reason=None):
+        """Cancel loading for some reason
+        """
+        raise CancelScriptLoading(reason)
+
+    def _load_module(self, module_name, **kwargs):
+        """Load a plugin
+        """
+        self._modman.load_module(module_name, **kwargs)
+
     def initialize_script(self):
         """Initializes the compiled code
         """
@@ -188,7 +201,9 @@ class ModuleManagerScript(object):
                              'require_instance': self._require_module_instance,
                              'attach_custom_hook': self._attach_custom_hook,
                              'attach_man_hook': self._attach_man_hook,
-                             'set_name': self._set_name
+                             'set_name': self._set_name,
+                             'cancel_exec': self._cancel_exec,
+                             'load_module': self._load_module
         }
 
         #print self.sanitized_code.body
@@ -207,6 +222,7 @@ class ModuleManagerScript(object):
 
         #some things should not be allowed after main body execution ,remove from scope
         del self.script_scope['set_name']
+        del self.script_scope['cancel_exec']
 
         #flag as initialized
         self._executed_once = True

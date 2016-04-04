@@ -38,7 +38,7 @@ class ModuleManagerHookActions(object):
     UNLOAD_MODULE = 2
 
 #import AFTER ModuleManagerHookActions declaration
-from periodicpy.plugmgr.scripting import ModuleManagerScript, DeferScriptLoading
+from periodicpy.plugmgr.scripting import ModuleManagerScript, DeferScriptLoading, CancelScriptLoading
 
 class ModuleManagerHook(object):
     """Module manager hook descriptor class
@@ -262,6 +262,8 @@ class ModuleManager(object):
                 self.deferred_scripts[ex.message['type']] = {script : {'req_inst': ex.message['inst']}}
             else:
                 self.deferred_scripts[ex.message['type']].update({script: {'req_inst': ex.message['inst']}})
+        except CancelScriptLoading as ex:
+            self.logger.info('loading of script {} was canceled by the script with: {}'.format(script, ex.message))
         except Exception as ex:
             self.logger.warning('failed to load script {} with: {}'.format(script, ex.message))
 
