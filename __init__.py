@@ -204,7 +204,10 @@ class ModuleManager(object):
             return
 
         try:
-            the_mod = imp.load_source(module, '{}/{}/__init__.py'.format(self.plugin_path, module))
+            the_mod = imp.load_source(module,
+                                      os.path.join(self.plugin_path,
+                                                   module,
+                                                   '__init__.py'))
             self.logger.info('inspecting module file: "{}"'.format(module))
             #guard discovery procedure
             self.discovery_active = True
