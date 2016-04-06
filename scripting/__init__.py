@@ -3,9 +3,8 @@
 import ast
 import symtable
 import codegen
-import time
 from periodicpy.plugmgr.plugin import ModuleCapabilities
-from periodicpy.plugmgr import ModuleManagerHookActions
+from periodicpy.hook import ModuleManagerHookActions
 
 class InvalidModuleError(Exception):
     pass

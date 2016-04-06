@@ -1,28 +1,38 @@
 """ Plugin manager
 """
 
-import importlib
 import imp
 import logging
 from collections import namedtuple
-from periodicpy.plugmgr.plugin import Module, ModuleArgument, ModuleCapabilities
-from periodicpy.plugmgr.plugin.exception import ModuleLoadError, ModuleAlreadyLoadedError,\
-    ModuleNotLoadedError, ModuleMethodError, ModulePropertyPermissionError, ModuleInvalidPropertyError
+from periodicpy.plugmgr.plugin import ModuleCapabilities
+from periodicpy.plugmgr.plugin.exception import (ModuleLoadError,
+                                                 ModuleAlreadyLoadedError,
+                                                 ModuleNotLoadedError,
+                                                 ModuleMethodError,
+                                                 ModulePropertyPermissionError,
+                                                 ModuleInvalidPropertyError)
 from periodicpy.plugmgr.exception import *
+from periodicpy.plugmgr.hook import (ModuleManagerHook,
+                                     ModuleManagerHookActions)
+from periodicpy.plugmgr.scripting import (ModuleManagerScript,
+                                          DeferScriptLoading,
+                                          CancelScriptLoading)
 import re
 import glob
 import os
 
 MODULE_HANDLER_LOGGING_KWARGS = ['log_info', 'log_warning', 'log_error']
 
-#helper functions
+
+# helper functions
 def handle_multiple_instance(module_name, loaded_module_list):
-    """Handle multiple instance plugin loading, returns suffix based on instance count
+    """Handle multiple instance plugin loading,
+       returns suffix based on instance count
     """
     instance_list = []
     for module in loaded_module_list:
         m = re.match(r"{}-([0-9]+)".format(module_name), module)
-        if m != None:
+        if m is not None:
             instance_list.append(int(m.group(1)))
 
     if len(instance_list) == 0:
@@ -30,48 +40,9 @@ def handle_multiple_instance(module_name, loaded_module_list):
 
     return sorted(instance_list)[-1] + 1
 
-class ModuleManagerHookActions(object):
-    """Actions executed on a hook returning true
-    """
-    NO_ACTION = 0
-    LOAD_MODULE = 1
-    UNLOAD_MODULE = 2
-
-#import AFTER ModuleManagerHookActions declaration
-from periodicpy.plugmgr.scripting import ModuleManagerScript, DeferScriptLoading, CancelScriptLoading
-
-class ModuleManagerHook(object):
-    """Module manager hook descriptor class
-    """
-    def __init__(self, owner):
-        self.owner = owner
-        self.attached_callbacks = []
-
-    def attach_callback(self, callback):
-        """Attaches a callback to the hook
-        """
-        if callback not in self.attached_callbacks:
-            self.attached_callbacks.append(callback)
-
-    def detach_callback(self, callback):
-        """Detaches callback from the hook
-        """
-        if callback in self.attached_callbacks:
-            self.attached_callbacks.remove(callback)
-
-    def find_callback_by_argument(self, argument):
-        """Find an attached callbacks by looking at the arguments
-           specified for it
-        """
-        attached_list = []
-        for callback in self.attached_callbacks:
-            if callback.argument == argument:
-                attached_list.append(callback)
-
-        return attached_list
-
 ModuleManagerMethod = namedtuple('ModuleManagerMethod', ['call', 'owner'])
 HookAttacher = namedtuple('HookAttacher', ['callback', 'action', 'argument'])
+
 
 class ModuleManager(object):
     """Module manager class"""
