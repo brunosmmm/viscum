@@ -208,7 +208,7 @@ class ModuleManager(object):
             self.logger.info('inspecting module file: "{}"'.format(module))
             #guard discovery procedure
             self.discovery_active = True
-            module_class = the_mod.discover_module(modman=self, plugin_path='{}/{}/'.format(self.plugin_path, module))
+            module_class = the_mod.discover_module(modman=self, plugin_path=os.path.join(self.plugin_path, module))
             self.found_modules[module_class.get_module_desc().arg_name] = module_class
             self.logger.info('Discovery of module "{}" succeeded'.format(module_class.get_module_desc().arg_name))
         except ImportError as error:
