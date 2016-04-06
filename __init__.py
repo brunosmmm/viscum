@@ -245,24 +245,37 @@ class ModuleManager(object):
             self._module_discovery(module)
 
         if len(self.deferred_discoveries) > 0:
-            self.logger.warning('some modules could not be discovered because they had dependencies that were not met: {}'.format(self.deferred_discoveries.keys()))
+            self.logger.warning('some modules could not be discovered because'
+                                ' they had dependencies that were not met: {}'
+                                .format(self.deferred_discoveries.keys()))
 
     def _discover_script(self, script):
         """Discovery process of a single script
         """
         try:
-            self.scripts[script] = ModuleManagerScript(script, self, initialize=True)
+            self.scripts[script] = ModuleManagerScript(script,
+                                                       self,
+                                                       initialize=True)
         except DeferScriptLoading as ex:
-            self.logger.debug('deferring load of script {}, which requires module {} to be active'.format(script, ex.message))
-            #put on deferred list
+            self.logger.debug('deferring load of script {}, '
+                              'which requires module {} to be active'
+                              .format(script, ex.message))
+            # put on deferred list
             if ex.message['type'] not in self.deferred_scripts:
-                self.deferred_scripts[ex.message['type']] = {script : {'req_inst': ex.message['inst']}}
+                self.deferred_scripts[ex.message['type']] = {script:
+                                                             {'req_inst':
+                                                              ex.message['inst']}}
             else:
-                self.deferred_scripts[ex.message['type']].update({script: {'req_inst': ex.message['inst']}})
+                self.deferred_scripts[ex.message['type']].update({script:
+                                                                  {'req_inst':
+                                                                   ex.message['inst']}})
         except CancelScriptLoading as ex:
-            self.logger.info('loading of script {} was canceled by the script with: {}'.format(script, ex.message))
+            self.logger.info('loading of script {} was canceled'
+                             ' by the script with: {}'
+                             .format(script, ex.message))
         except Exception as ex:
-            self.logger.warning('failed to load script {} with: {}'.format(script, ex.message))
+            self.logger.warning('failed to load script {} with: {}'
+                                .format(script, ex.message))
 
     def discover_scripts(self):
         """Discover available scripts
@@ -287,9 +300,12 @@ class ModuleManager(object):
         self._load_module(module_name, **kwargs)
 
     def _load_module(self, module_name, loaded_by='modman', **kwargs):
-        """Load a module that has been previously discovered, with owner information"""
+        """Load a module that has been previously
+           discovered, with owner information
+        """
         if module_name not in self.found_modules:
-            raise ModuleLoadError('invalid module name: "{}"'.format(module_name))
+            raise ModuleLoadError('invalid module name: "{}"'
+                                  .format(module_name))
 
         if 'instance_name' not in kwargs:
             instance_name = module_name
@@ -299,49 +315,59 @@ class ModuleManager(object):
         if 'instance_suffix' in kwargs:
             instance_name += '-{}'.format(kwargs['instance_suffix'])
 
-        #insert self object in kwargs for now, for manipulation
-        kwargs.update({'plugmgr' : self,
-                       'loaded_by' : loaded_by})
+        # insert self object in kwargs for now, for manipulation
+        kwargs.update({'plugmgr': self,
+                       'loaded_by': loaded_by})
 
-        #check if module type allows multiple instances
+        # check if module type allows multiple instances
         if self._is_module_type_present(module_name):
-            if ModuleCapabilities.MultiInstanceAllowed not in self.found_modules[module_name].get_capabilities():
+            if ModuleCapabilities.MultiInstanceAllowed not in\
+               self.found_modules[module_name].get_capabilities():
                 raise ModuleAlreadyLoadedError('module is already loaded')
 
         if instance_name in self.loaded_modules:
-            #handle multiple instances, append proper suffix to the type name automatically
-            if self.found_modules[module_name].get_multi_inst_suffix() == None:
-                multi_inst_name = instance_name + '-{}'.format(handle_multiple_instance(instance_name,
-                                                                                        self.loaded_modules.keys()))
+            # handle multiple instances, append proper
+            # suffix to the type name automatically
+            if self.found_modules[module_name].get_multi_inst_suffix() is None:
+                multi_inst_name = '{}-{}'.format(instance_name,
+                                                 handle_multiple_instance(instance_name,
+                                                                          self.loaded_modules.keys()))
             else:
-                multi_inst_name = instance_name + '-{}'.format(self.found_modules[module_name].get_multi_inst_suffix())
+                multi_inst_name = '{}-{}'.format(instance_name,
+                                                 self.found_modules[module_name].get_multi_inst_suffix())
 
             self.loaded_modules[multi_inst_name] = self.found_modules[module_name](module_id=multi_inst_name,
                                                                                    handler=self.module_handler,
                                                                                    **kwargs)
-            self.logger.info('Loaded module "{}" as "{}", loaded by "{}"'.format(module_name, multi_inst_name, loaded_by))
-            self._trigger_manager_hook('modman.module_loaded', instance_name=multi_inst_name)
+            self.logger.info('Loaded module "{}" as "{}", loaded by "{}"'
+                             .format(module_name, multi_inst_name, loaded_by))
+            self._trigger_manager_hook('modman.module_loaded',
+                                       instance_name=multi_inst_name)
             return multi_inst_name
 
-        #load (create object)
+        # load (create object)
         self.loaded_modules[instance_name] = self.found_modules[module_name](module_id=instance_name,
                                                                            handler=self.module_handler,
                                                                            **kwargs)
 
-        self.logger.info('Loaded module "{}" as "{}", loaded by "{}"'.format(module_name, instance_name, loaded_by))
-        #trigger hooks
-        self._trigger_manager_hook('modman.module_loaded', instance_name=instance_name)
+        self.logger.info('Loaded module "{}" as "{}", loaded by "{}"'
+                         .format(module_name, instance_name, loaded_by))
+        # trigger hooks
+        self._trigger_manager_hook('modman.module_loaded',
+                                   instance_name=instance_name)
 
-        #look for scripts that have been deferred from loading
+        # look for scripts that have been deferred from loading
         for mod_name, script_list in self.deferred_scripts.iteritems():
             for script_path, attrs in script_list.iteritems():
                 if mod_name == module_name:
-                    #check if specific instance is needed
+                    # check if specific instance is needed
                     if attrs['req_inst'] != '':
-                        if instance_name == '{}-{}'.format(mod_name, attrs['req_inst']):
-                            #requirements met, load script
+                        if instance_name == '{}-{}'.format(mod_name,
+                                                           attrs['req_inst']):
+                            # requirements met, load script
                             self._discover_script(script_path)
-                        elif instance_name == attrs['req_inst']: #not multi isntance
+                        elif instance_name == attrs['req_inst']:
+                            # not multi instance
                             self._discover_script(script_path)
 
         return instance_name
@@ -367,7 +393,8 @@ class ModuleManager(object):
         if instance_name in self.loaded_modules:
             return self.loaded_modules[instance_name].get_module_type()
 
-        self.logger.warn('requested instance "{}" not found'.format(instance_name))
+        self.logger.warn('requested instance "{}" not found'
+                         .format(instance_name))
         return {'status': 'error',
                 'error': 'invalid_instance'}
 
@@ -378,7 +405,8 @@ class ModuleManager(object):
             return self.found_modules[module_name].get_capabilities()
 
     def get_module_structure(self, module_name):
-        """Retrieves the module's structure in a JSON-serializable dictionary or descriptive error
+        """Retrieves the module's structure in a
+           JSON-serializable dictionary or descriptive error
         """
         if module_name in self.found_modules:
             return self.found_modules[module_name].dump_module_structure()
@@ -403,15 +431,19 @@ class ModuleManager(object):
         try:
             return self.loaded_modules[module_name].get_property_value(property_name)
         except ModulePropertyPermissionError:
-            self.logger.warn('tried to read write-only property "{}" of instance "{}"'.format(property_name, module_name))
+            self.logger.warn('tried to read write-only property '
+                             '"{}" of instance "{}"'
+                             .format(property_name, module_name))
             return {'status': 'error',
                     'error': 'write_only'}
         except ModuleInvalidPropertyError:
-            self.logger.error('property does not exist: "{}"'.format(property_name))
+            self.logger.error('property does not exist: "{}"'
+                              .format(property_name))
             return {'status': 'error',
                     'error': 'invalid_property'}
         except KeyError:
-            self.logger.error('get_module_property: instance "{}" not loaded'.format(module_name))
+            self.logger.error('get_module_property: instance "{}" not loaded'
+                              .format(module_name))
             return {'status': 'error',
                     'error': 'invalid_instance'}
 
@@ -420,18 +452,23 @@ class ModuleManager(object):
            Returns status of the attempt
         """
         try:
-            self.loaded_modules[instance_name].set_property_value(property_name, value)
+            self.loaded_modules[instance_name].set_property_value(property_name,
+                                                                  value)
             return {'status': 'ok'}
         except ModulePropertyPermissionError:
-            self.logger.error('tried to write read-only property "{}" of instance "{}"'.format(property_name, instance_name))
+            self.logger.error('tried to write read-only property '
+                              '"{}" of instance "{}"'
+                              .format(property_name, instance_name))
             return {'status': 'error',
                     'error': 'read_only'}
         except ModuleInvalidPropertyError:
-            self.logger.error('property does not exist: "{}"'.format(property_name))
+            self.logger.error('property does not exist: "{}"'
+                              .format(property_name))
             return {'status': 'error',
                     'error': 'invalid_property'}
         except KeyError:
-            self.logger.error('get_module_property: instance "{}" not loaded'.format(instance_name))
+            self.logger.error('get_module_property: instance "{}" not loaded'
+                              .format(instance_name))
             return {'status': 'error',
                     'error': 'invalid_instance'}
 
@@ -461,22 +498,29 @@ class ModuleManager(object):
         """
         if __instance_name in self.loaded_modules:
             try:
-                #TODO: for consistency return not the actual value but a dictionary?
-                return self.loaded_modules[__instance_name].call_method(__method_name, **kwargs)
+                # TODO: for consistency return not
+                # the actual value but a dictionary?
+                return self.loaded_modules[__instance_name].call_method(__method_name,
+                                                                        **kwargs)
             except ModuleMethodError as e:
-                self.logger.warn('call to method "{}" of instance "{}" failed with: "{}"'.format(__method_name,
-                                                                                                 __instance_name,
-                                                                                                 e.message))
+                self.logger.warn('call to method "{}" of instance '
+                                 '"{}" failed with: "{}"'
+                                 .format(__method_name,
+                                         __instance_name,
+                                         e.message))
                 return {'status': 'error',
                         'error': 'call_failed'}
 
-        self.logger.warn('requested instance "{}" not found'.format(__instance_name))
+        self.logger.warn('requested instance "{}" not found'
+                         .format(__instance_name))
         return {'status': 'error',
                 'error': 'invalid_instance'}
 
     def list_loaded_modules(self):
-        """Returns a dictionary that contains the names of instances currently loaded as keys
-           and which module owns them as values. Note that if there is no specific owner,
+        """Returns a dictionary that contains the names
+           of instances currently loaded as keys
+           and which module owns them as values.
+           Note that if there is no specific owner,
            they are owned by the module manager, shown as 'modman'
         """
 
@@ -495,23 +539,25 @@ class ModuleManager(object):
         """Unload a module and automatically cleanup after it
         """
         if module_name not in self.loaded_modules:
-            raise ModuleNotLoadedError('cant unload {}: module not loaded'.format(module_name))
+            raise ModuleNotLoadedError('cant unload {}: module not loaded'
+                                       .format(module_name))
 
         if requester != self.loaded_modules[module_name].get_loaded_kwargs('loaded_by'):
             if requester != 'modman':
-                raise CannotUnloadError('cannot unloaded: forbidden by module manager')
+                raise CannotUnloadError('cannot unloaded: forbidden'
+                                        ' by module manager')
 
-        #do unloading procedure
+        # do unloading procedure
         self.loaded_modules[module_name].module_unload()
 
-        #remove custom hooks
+        # remove custom hooks
         remove_hooks = []
         for hook_name, hook in self.custom_hooks.iteritems():
             if hook.owner == module_name:
                 remove_hooks.append(hook_name)
 
         for hook in remove_hooks:
-            #notify attached
+            # notify attached
             for attached in self.custom_hooks[hook].attached_callbacks:
                 if attached.argument in self.loaded_modules:
                     self.loaded_modules[attached.argument].handler_communicate(reason='provider_unloaded')
@@ -519,7 +565,7 @@ class ModuleManager(object):
             del self.custom_hooks[hook]
             self.logger.debug('removing custom hook: "{}"'.format(hook))
 
-        #remove custom methods
+        # remove custom methods
         remove_methods = []
         for method_name, method in self.custom_methods.iteritems():
             if method.owner == module_name:
@@ -529,7 +575,7 @@ class ModuleManager(object):
             del self.custom_methods[method]
             self.logger.debug('removing custom method: "{}"'.format(method))
 
-        #remove interrupt handlers
+        # remove interrupt handlers
         remove_interrupts = []
         for interrupt_name, interrupt in self.external_interrupts.iteritems():
             if interrupt.owner == module_name:
@@ -537,9 +583,10 @@ class ModuleManager(object):
 
         for interrupt in remove_interrupts:
             del self.external_interrupts[interrupt]
-            self.logger.debug('removing interrupt handler: "{}"'.format(interrupt))
+            self.logger.debug('removing interrupt handler: "{}"'
+                              .format(interrupt))
 
-        #detach hooks
+        # detach hooks
         for hook_name, hook in self.custom_hooks.iteritems():
             for attached in hook.find_callback_by_argument(module_name):
                 hook.detach_callback(attached)
@@ -548,10 +595,11 @@ class ModuleManager(object):
             for attached in hook.find_callback_by_argument(module_name):
                 hook.detach_callback(attached)
 
-        #remove
+        # remove
         del self.loaded_modules[module_name]
 
-        self.logger.info('module "{}" unloaded by "{}"'.format(module_name, requester))
+        self.logger.info('module "{}" unloaded by "{}"'
+                         .format(module_name, requester))
 
     def list_discovered_modules(self):
         """Returns a list of all module types that have been discovered
@@ -559,7 +607,8 @@ class ModuleManager(object):
         return dict([(name, mod.get_module_desc()) for name, mod in self.found_modules.iteritems()])
 
     def module_handler(self, which_module, *args, **kwargs):
-        """Function called by a live module to carry out various operations within the module manager scope
+        """Function called by a live module to carry out various
+           operations within the module manager scope.
            Returns various different values depending on the requested method
         """
         if 'get_available_drivers' in args:
@@ -567,7 +616,7 @@ class ModuleManager(object):
 
         for kwg, value in kwargs.iteritems():
             if kwg in MODULE_HANDLER_LOGGING_KWARGS:
-                #dispatch logger
+                # dispatch logger
                 self._log_module_message(which_module, kwg, value)
                 return None
 
@@ -575,53 +624,77 @@ class ModuleManager(object):
                 try:
                     return self.call_custom_method(value[0], *value[1])
                 except MethodNotAvailableError as ex:
-                    self.logger.debug('module "{}" tried to call invalid method: "{}"'.format(which_module, value[0]))
-                    self.loaded_modules[which_module].handler_communicate(reason='call_method_failed', exception=ex)
+                    self.logger.debug('module "{}" tried to call '
+                                      'invalid method: "{}"'
+                                      .format(which_module, value[0]))
+                    self.loaded_modules[which_module].handler_communicate(reason='call_method_failed',
+                                                                          exception=ex)
                     return None
 
             if kwg == 'attach_custom_hook':
                 try:
-                    self.attach_custom_hook(value[0], *value[1])
+                    self.attach_custom_hook(value[0],
+                                            *value[1])
                 except HookNotAvailableError as ex:
-                    self.logger.debug('module "{}" tried to attach to invalid hook: "{}"'.format(which_module, value[0]))
-                    self.loaded_modules[which_module].handler_communicate(reason='attach_hook_failed', exception=ex)
+                    self.logger.debug('module "{}" tried to attach '
+                                      'to invalid hook: "{}"'
+                                      .format(which_module, value[0]))
+                    self.loaded_modules[which_module].handler_communicate(reason='attach_hook_failed',
+                                                                          exception=ex)
 
             if kwg == 'attach_manager_hook':
                 try:
-                    self.attach_manager_hook(value[0], *value[1])
+                    self.attach_manager_hook(value[0],
+                                             *value[1])
                 except HookNotAvailableError as ex:
-                    self.logger.debug('module "{}" tried to attach to invalid hook: "{}"'.format(which_module, value[0]))
-                    self.loaded_modules[which_module].handler_communicate(reason='attach_hook_failed', exception=ex)
+                    self.logger.debug('module "{}" tried to attach '
+                                      'to invalid hook: "{}"'
+                                      .format(which_module, value[0]))
+                    self.loaded_modules[which_module].handler_communicate(reason='attach_hook_failed',
+                                                                          exception=ex)
 
             if kwg == 'load_module':
                 try:
-                    return self._load_module(value[0], which_module, **value[1])
+                    return self._load_module(value[0],
+                                             which_module,
+                                             **value[1])
                 except (ModuleLoadError, ModuleAlreadyLoadedError) as ex:
-                    self.loaded_modules[which_module].handler_communicate(reason='load_module_failed', exception=ex)
+                    self.loaded_modules[which_module].handler_communicate(reason='load_module_failed',
+                                                                          exception=ex)
 
             if kwg == 'unload_module':
                 try:
-                    self._unload_module(value[0], which_module)
+                    self._unload_module(value[0],
+                                        which_module)
                 except (ModuleNotLoadedError, CannotUnloadError) as ex:
-                    self.loaded_modules[which_module].handler_communicate(reason='unload_module_failed', exception=ex)
+                    self.loaded_modules[which_module].handler_communicate(reason='unload_module_failed',
+                                                                          exception=ex)
 
             if kwg == 'install_custom_hook':
                 try:
-                    self._install_custom_hook(value[0], which_module)
+                    self._install_custom_hook(value[0],
+                                              which_module)
                 except HookAlreadyInstalledError as ex:
-                    self.loaded_modules[which_module].handler_communicate(reason='install_hook_failed', exception=ex)
+                    self.loaded_modules[which_module].handler_communicate(reason='install_hook_failed',
+                                                                          exception=ex)
 
             if kwg == 'install_custom_method':
                 try:
-                    self._install_custom_method(value[0], value[1], which_module)
+                    self._install_custom_method(value[0],
+                                                value[1],
+                                                which_module)
                 except MethodAlreadyInstalledError:
-                    self.loaded_modules[which_module].handler_communicate(reason='install_method_failed', exception=ex)
+                    self.loaded_modules[which_module].handler_communicate(reason='install_method_failed',
+                                                                          exception=ex)
 
             if kwg == 'install_interrupt_handler':
                 try:
-                    self._install_interrupt_handler(value[0], value[1], which_module)
+                    self._install_interrupt_handler(value[0],
+                                                    value[1],
+                                                    which_module)
                 except InterruptAlreadyInstalledError:
-                    self.loaded_modules[which_module].handler_communicate(reason='install_interrupt_failed', exception=ex)
+                    self.loaded_modules[which_module].handler_communicate(reason='install_interrupt_failed',
+                                                                          exception=ex)
 
             if kwg == 'require_module_instance':
                 if value not in self.loaded_modules:
@@ -649,21 +722,35 @@ class ModuleManager(object):
         for attached_callback in hook_dict[hook_name].attached_callbacks:
             try:
                 if attached_callback.callback(**kwargs):
-                    if attached_callback.action == ModuleManagerHookActions.LOAD_MODULE:
-                        #load the module!
-                        self.logger.debug('some hook returned true, loading module {}'.format(attached_callback.argument))
-                        #module must accept same kwargs, this is mandatory with this discovery event
+                    if attached_callback.action ==\
+                       ModuleManagerHookActions.LOAD_MODULE:
+                        # load the module!
+                        self.logger.debug('some hook returned true, '
+                                          'loading module {}'
+                                          .format(attached_callback.argument))
+                        # module must accept same kwargs, this is mandatory
+                        # with this discovery event
                         try:
                             self.load_module(attached_callback.argument.get_module_desc().arg_name,
                                              **kwargs)
                         except Exception as ex:
-                            self.logger.error('loading of module of class "{}" failed with: {}'.format(attached_callback.argument.__name__, ex.message))
-                    elif attached_callback.action == ModuleManagerHookActions.UNLOAD_MODULE:
-                        #unload the attached module
-                        self.logger.debug('a hook required module {} to be unloaded'.format(attached_callback.argument))
+                            self.logger.error('loading of module of class '
+                                              '"{}" failed with: {}'
+                                              .format(attached_callback.argument.__name__,
+                                                      ex.message))
+                    elif attached_callback.action ==\
+                         ModuleManagerHookActions.UNLOAD_MODULE:
+                        # unload the attached module
+                        self.logger.debug('a hook required module '
+                                          '{} to be unloaded'
+                                          .format(attached_callback.argument))
                         self.unload_module(attached_callback.argument)
             except Exception as ex:
-                self.logger.error('failed to call function {} attached to "{}" with: {}'.format(attached_callback, hook_name, ex.message))
+                self.logger.error('failed to call function '
+                                  '{} attached to "{}" with: {}'
+                                  .format(attached_callback,
+                                          hook_name,
+                                          ex.message))
 
     def trigger_custom_hook(self, hook_name, **kwargs):
         """Hook trigger wrapper function for custom hooks
