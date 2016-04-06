@@ -52,10 +52,13 @@ class ModuleManager(object):
         self.loaded_modules = {}
         self.logger = logging.getLogger('{}.drvman'.format(central_log))
 
-        #hooks
-        self.attached_hooks = {'modman.module_loaded' : ModuleManagerHook('modman'),
-                               'modman.module_unloaded' : ModuleManagerHook('modman'),
-                               'modman.tick' : ModuleManagerHook('modman')}
+        # hooks
+        self.attached_hooks = {'modman.module_loaded':
+                               ModuleManagerHook('modman'),
+                               'modman.module_unloaded':
+                               ModuleManagerHook('modman'),
+                               'modman.tick':
+                               ModuleManagerHook('modman')}
 
         self.custom_hooks = {}
         self.custom_methods = {}
@@ -67,10 +70,10 @@ class ModuleManager(object):
         self.script_path = script_path
         self.tick_counter = 0
 
-        #states
+        # states
         self.discovery_active = False
 
-        #module discovery deferral
+        # module discovery deferral
         self.deferred_discoveries = {}
         self.deferred_scripts = {}
 
@@ -100,15 +103,18 @@ class ModuleManager(object):
         """
         self._install_custom_method(method_name, callback)
 
-    def _install_custom_method(self, method_name, callback, installed_by='modman'):
+    def _install_custom_method(self, method_name,
+                               callback, installer='modman'):
         """Inner function to install the custom method, with
            owner information
         """
         if method_name in self.custom_methods:
             raise MethodAlreadyInstalledError('method is already installed')
 
-        self.logger.debug('custom method "{}" installed, calls {}'.format(method_name, callback))
-        self.custom_methods[method_name] = ModuleManagerMethod(call=callback, owner=installed_by)
+        self.logger.debug('custom method "{}" installed, calls {}'
+                          .format(method_name, callback))
+        self.custom_methods[method_name] = ModuleManagerMethod(call=callback,
+                                                               owner=installer)
 
     def call_custom_method(self, method_name, *args, **kwargs):
         """Calls a custom method, if available
@@ -122,10 +128,13 @@ class ModuleManager(object):
         """Attaches a callback to a custom hook, if available
         """
         if attach_to in self.custom_hooks:
-            self.custom_hooks[attach_to].attach_callback(HookAttacher(callback=callback, action=action, argument=argument))
-            self.logger.debug('callback {} installed into custom hook {} with action {}'.format(callback,
-                                                                                                attach_to,
-                                                                                                action))
+            self.custom_hooks[attach_to].attach_callback(HookAttacher(callback=callback,
+                                                                      action=action,
+                                                                      argument=argument))
+            self.logger.debug('callback {} installed into custom hook {} with action {}'
+                              .format(callback,
+                                      attach_to,
+                                      action))
             return
 
         raise HookNotAvailableError('the requested hook is not available')
@@ -134,10 +143,13 @@ class ModuleManager(object):
         """Attaches a callback to a manager default hook
         """
         if attach_to in self.attached_hooks:
-            self.attached_hooks[attach_to].attach_callback(HookAttacher(callback=callback, action=action, argument=driver_class))
-            self.logger.debug('callback {} installed into hook {} with action {}'.format(callback,
-                                                                                         attach_to,
-                                                                                         action))
+            self.attached_hooks[attach_to].attach_callback(HookAttacher(callback=callback,
+                                                                        action=action,
+                                                                        argument=driver_class))
+            self.logger.debug('callback {} installed into hook {} with action {}'
+                              .format(callback,
+                                      attach_to,
+                                      action))
             return
 
         raise HookNotAvailableError('the requested hook is not available')
@@ -147,15 +159,19 @@ class ModuleManager(object):
         """
         self._install_interrupt_handler(interrupt_key, callback)
 
-    def _install_interrupt_handler(self, interrupt_key, callback, installed_by='modman'):
+    def _install_interrupt_handler(self, interrupt_key,
+                                   callback, installer='modman'):
         """Inner function to install a interrupt handler,
            with owner information
         """
         if interrupt_key in self.external_interrupts:
-            raise InterruptAlreadyInstalledError('interrupt is already installed')
+            raise InterruptAlreadyInstalledError('interrupt already installed')
 
-        self.logger.debug('custom interrupt "{}" was installed, calls "{}"'.format(interrupt_key, callback))
-        self.external_interrupts[interrupt_key] = ModuleManagerMethod(call=callback, owner=installed_by)
+        self.logger.debug('custom interrupt "{}" was installed, calls "{}"'
+                          .format(interrupt_key,
+                                  callback))
+        self.external_interrupts[interrupt_key] = ModuleManagerMethod(call=callback,
+                                                                      owner=installer)
 
     def require_discovered_module(self, module_type):
         """Require a certain module to be present at discovery time
@@ -170,7 +186,7 @@ class ModuleManager(object):
     def _module_discovery(self, module):
         """Main module discovery routine, tries to load a module file
         """
-        #ignore root
+        # ignore root
         if module == '__init__':
             return
 
@@ -180,32 +196,38 @@ class ModuleManager(object):
                                                    module,
                                                    '__init__.py'))
             self.logger.info('inspecting module file: "{}"'.format(module))
-            #guard discovery procedure
+            # guard discovery procedure
             self.discovery_active = True
-            module_class = the_mod.discover_module(modman=self, plugin_path=os.path.join(self.plugin_path, module))
+            module_class = the_mod.discover_module(modman=self,
+                                                   plugin_path=os.path.join(self.plugin_path,
+                                                                            module))
             self.found_modules[module_class.get_module_desc().arg_name] = module_class
-            self.logger.info('Discovery of module "{}" succeeded'.format(module_class.get_module_desc().arg_name))
+            self.logger.info('Discovery of module "{}" succeeded'
+                             .format(module_class.get_module_desc().arg_name))
         except ImportError as error:
-            self.logger.warning('could not register python module: {}'.format(error.message))
+            self.logger.warning('could not register python module: {}'
+                                .format(error.message))
         except DeferModuleDiscovery as ex:
             self.logger.info('deferring discovery of module')
-            #hacky
+            # hacky
             self.deferred_discoveries[module] = ex.message
         except Exception as error:
-            raise #debug
-            #catch anything else because this cannot break the application
-            self.logger.warning('could not register module {}: {}'.format(module,error.message))
+            raise  # debug
+            # catch anything else because this cannot break the application
+            self.logger.warning('could not register module {}: {}'
+                                .format(module, error.message))
 
-        #check for deferrals that depend on the previous loaded module
+        # check for deferrals that depend on the previous loaded module
         deferred_done = []
         for deferred, dependency in self.deferred_discoveries.iteritems():
             if dependency == module:
-                #discover (recursive!)
-                self.logger.debug('dependency for deferred "{}" met; discovering now'.format(deferred))
+                # discover (recursive!)
+                self.logger.debug('dependency for deferred "{}" met; discovering now'
+                                  .format(deferred))
                 self._module_discovery(deferred)
                 deferred_done.append(deferred)
 
-        #remove done deferrals
+        # remove done deferrals
         for deferred in deferred_done:
             del self.deferred_discoveries[deferred]
 
