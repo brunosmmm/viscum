@@ -1,5 +1,7 @@
 """Plugin system data types
 """
+
+
 class ModuleDataTypes:
     """Data types enum
     """

@@ -2,6 +2,7 @@
 """
 from periodicpy.plugmgr.plugin.dtype import ModuleDataTypes
 
+
 class ModuleMethod(object):
     """Method descriptor class
     """
@@ -15,7 +16,7 @@ class ModuleMethod(object):
         """
 
         self.method_desc = method_desc
-        if method_args != None:
+        if method_args is not None:
             self.method_args = method_args
         else:
             self.method_args = {}
@@ -27,6 +28,7 @@ class ModuleMethod(object):
         """Add more arguments to the method description
         """
         self.method_args.update(arguments)
+
 
 class ModuleMethodArgument(object):
     """A method argument, descriptor class

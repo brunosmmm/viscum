@@ -2,13 +2,14 @@
 """
 from periodicpy.plugmgr.plugin.dtype import ModuleDataTypes
 
+
 class ModulePropertyPermissions(object):
     """Property permissions enum"""
     READ = 0
     WRITE = 1
     RW = 2
 
-#driver property
+
 class ModuleProperty(object):
     """Module property descriptor class
     """
@@ -27,5 +28,5 @@ class ModuleProperty(object):
         self.setter = setter
         self.data_type = data_type
 
-        #hacky hack
+        # hacky hack
         self.__dict__.update(kwargs)
