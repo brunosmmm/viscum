@@ -4,7 +4,7 @@ import ast
 import symtable
 import codegen
 from periodicpy.plugmgr.plugin import ModuleCapabilities
-from periodicpy.hook import ModuleManagerHookActions
+from periodicpy.plugmgr.hook import ModuleManagerHookActions
 
 class InvalidModuleError(Exception):
     pass
