@@ -237,7 +237,8 @@ class ModuleManager(object):
         """Discovery routine wrapper, iterates through all found files in the
            plugins subfolder
         """
-        module_root = imp.load_source('plugins', self.plugin_path+'/__init__.py')
+        module_root = imp.load_source('plugins', os.path.join(self.plugin_path,
+                                                              '__init__.py'))
         module_list = module_root.MODULES
 
         for module in module_list:
