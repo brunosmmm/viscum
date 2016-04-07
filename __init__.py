@@ -190,6 +190,9 @@ class ModuleManager(object):
         if module == '__init__':
             return
 
+        # success flag
+        discovery_succeeded = False
+
         try:
             the_mod = imp.load_source(module,
                                       os.path.join(self.plugin_path,
@@ -204,9 +207,11 @@ class ModuleManager(object):
             self.found_modules[module_class.get_module_desc().arg_name] = module_class
             self.logger.info('Discovery of module "{}" succeeded'
                              .format(module_class.get_module_desc().arg_name))
+            discovery_succeeded = True
         except ImportError as error:
-            self.logger.warning('could not register python module: {}'
-                                .format(error.message))
+            self.logger.warning('could not register python module "{}": {}'
+                                .format(module,
+                                        error.message))
         except DeferModuleDiscovery as ex:
             self.logger.info('deferring discovery of module')
             # hacky
@@ -220,9 +225,10 @@ class ModuleManager(object):
         # check for deferrals that depend on the previous loaded module
         deferred_done = []
         for deferred, dependency in self.deferred_discoveries.iteritems():
-            if dependency == module:
+            if dependency == module and discovery_succeeded:
                 # discover (recursive!)
-                self.logger.debug('dependency for deferred "{}" met; discovering now'
+                self.logger.debug('dependency for deferred '
+                                  '"{}" met; discovering now'
                                   .format(deferred))
                 self._module_discovery(deferred)
                 deferred_done.append(deferred)
