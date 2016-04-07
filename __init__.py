@@ -4,19 +4,19 @@
 import imp
 import logging
 from collections import namedtuple
-from periodicpy.plugmgr.plugin import ModuleCapabilities
-from periodicpy.plugmgr.plugin.exception import (ModuleLoadError,
-                                                 ModuleAlreadyLoadedError,
-                                                 ModuleNotLoadedError,
-                                                 ModuleMethodError,
-                                                 ModulePropertyPermissionError,
-                                                 ModuleInvalidPropertyError)
-from periodicpy.plugmgr.exception import *
-from periodicpy.plugmgr.hook import (ModuleManagerHook,
-                                     ModuleManagerHookActions)
-from periodicpy.plugmgr.scripting import (ModuleManagerScript,
-                                          DeferScriptLoading,
-                                          CancelScriptLoading)
+from viscum.plugin import ModuleCapabilities
+from viscum.plugin.exception import (ModuleLoadError,
+                                     ModuleAlreadyLoadedError,
+                                     ModuleNotLoadedError,
+                                     ModuleMethodError,
+                                     ModulePropertyPermissionError,
+                                     ModuleInvalidPropertyError)
+from viscum.exception import *
+from viscum.hook import (ModuleManagerHook,
+                         ModuleManagerHookActions)
+from viscum.scripting import (ModuleManagerScript,
+                              DeferScriptLoading,
+                              CancelScriptLoading)
 import re
 import glob
 import os

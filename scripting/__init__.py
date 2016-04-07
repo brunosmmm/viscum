@@ -3,8 +3,8 @@
 import ast
 import symtable
 import codegen
-from periodicpy.plugmgr.plugin import ModuleCapabilities
-from periodicpy.plugmgr.hook import ModuleManagerHookActions
+from viscum.plugin import ModuleCapabilities
+from viscum.hook import ModuleManagerHookActions
 
 
 class InvalidModuleError(Exception):

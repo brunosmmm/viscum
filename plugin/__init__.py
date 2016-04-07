@@ -2,14 +2,14 @@
 Module Manager Plugin base class implementation
 """
 from collections import namedtuple
-from periodicpy.plugmgr.plugin.exception import (ModuleLoadError,
-                                                 ModuleNotLoadedError,
-                                                 ModuleInvalidPropertyError,
-                                                 ModulePropertyPermissionError,
-                                                 ModuleMethodError)
-from periodicpy.plugmgr.plugin.prop import (ModulePropertyPermissions,
-                                            ModuleProperty)
-from periodicpy.plugmgr.plugin.method import ModuleMethod, ModuleMethodArgument
+from viscum.plugin.exception import (ModuleLoadError,
+                                     ModuleNotLoadedError,
+                                     ModuleInvalidPropertyError,
+                                     ModulePropertyPermissionError,
+                                     ModuleMethodError)
+from viscum.plugin.prop import (ModulePropertyPermissions,
+                                ModuleProperty)
+from viscum.plugin.method import ModuleMethod, ModuleMethodArgument
 import json
 import copy
 

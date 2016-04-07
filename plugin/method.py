@@ -1,6 +1,6 @@
 """Module method descriptor
 """
-from periodicpy.plugmgr.plugin.dtype import ModuleDataTypes
+from viscum.plugin.dtype import ModuleDataTypes
 
 
 class ModuleMethod(object):
