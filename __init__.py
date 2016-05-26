@@ -448,8 +448,11 @@ class ModuleManager(object):
             return {'status': 'error',
                     'error': 'invalid_property'}
         except KeyError:
-            self.logger.error('get_module_property: instance "{}" not loaded'
-                              .format(module_name))
+            if module_name not in self.loaded_modules:
+                self.logger.error('get_module_property: instance "{}" not loaded'
+                                  .format(module_name))
+            else:
+                self.logger.error('get_module_property: unknown error')
             return {'status': 'error',
                     'error': 'invalid_instance'}
 
