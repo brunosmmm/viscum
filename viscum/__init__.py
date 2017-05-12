@@ -183,6 +183,11 @@ class ModuleManager(object):
             if module_type not in self.found_modules:
                 raise DeferModuleDiscovery(module_type)
 
+    def insert_module(self, module_class):
+        self.found_modules[module_class.get_module_desc().arg_name] = module_class
+        self.logger.info('Manually '
+                         'inserting module "{}"'.format(module_class.get_module_desc().arg_name))
+
     def _module_discovery(self, module):
         """Main module discovery routine, tries to load a module file
         """
@@ -303,7 +308,7 @@ class ModuleManager(object):
     def load_module(self, module_name, **kwargs):
         """Load module by type name, with named arguments
         """
-        self._load_module(module_name, **kwargs)
+        return self._load_module(module_name, **kwargs)
 
     def _load_module(self, module_name, loaded_by='modman', **kwargs):
         """Load a module that has been previously
