@@ -197,15 +197,18 @@ class Module(object):
         """
         if __method_name in self._methods:
             method_args = self._methods[__method_name].method_args
-            for kwg, m_arg in method_args.iteritems():
+            for kwg, m_arg in method_args.items():
                 if m_arg.required and kwg not in kwargs:
                     # fail, didn't provide required argument
                     raise ModuleMethodError('missing required argument')
 
             return_value = None
             try:
-                return_value =\
-                    self._methods[__method_name].method_call(**kwargs)
+                if self._methods[__method_name].method_call is not None:
+                    return_value =\
+                                   self._methods[__method_name].method_call(**kwargs)
+                else:
+                    return_value = None
             except Exception:
                 # placeholder
                 raise
