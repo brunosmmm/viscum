@@ -229,7 +229,7 @@ class ModuleManager(object):
 
         # check for deferrals that depend on the previous loaded module
         deferred_done = []
-        for deferred, dependency in self.deferred_discoveries.iteritems():
+        for deferred, dependency in self.deferred_discoveries.items():
             if dependency == module and discovery_succeeded:
                 # discover (recursive!)
                 self.logger.debug('dependency for deferred '
@@ -258,7 +258,7 @@ class ModuleManager(object):
         if len(self.deferred_discoveries) > 0:
             self.logger.warning('some modules could not be discovered because'
                                 ' they had dependencies that were not met: {}'
-                                .format(self.deferred_discoveries.keys()))
+                                .format(list(self.deferred_discoveries.keys())))
 
     def _discover_script(self, script):
         """Discovery process of a single script
@@ -299,7 +299,7 @@ class ModuleManager(object):
     def _is_module_type_present(self, module_class_name):
         """Returns wether any module of a certain type has been loaded
         """
-        for mod_name, mod_obj in self.loaded_modules.iteritems():
+        for mod_name, mod_obj in self.loaded_modules.items():
             if mod_obj.get_module_type() == module_class_name:
                 return True
 
@@ -342,7 +342,7 @@ class ModuleManager(object):
             if self.found_modules[module_name].get_multi_inst_suffix() is None:
                 multi_inst_name = '{}-{}'.format(instance_name,
                                                  handle_multiple_instance(instance_name,
-                                                                          self.loaded_modules.keys()))
+                                                                          list(self.loaded_modules.keys())))
             else:
                 multi_inst_name = '{}-{}'.format(instance_name,
                                                  self.found_modules[module_name].get_multi_inst_suffix())
@@ -368,8 +368,8 @@ class ModuleManager(object):
                                    instance_name=instance_name)
 
         # look for scripts that have been deferred from loading
-        for mod_name, script_list in self.deferred_scripts.iteritems():
-            for script_path, attrs in script_list.iteritems():
+        for mod_name, script_list in self.deferred_scripts.items():
+            for script_path, attrs in script_list.items():
                 if mod_name == module_name:
                     # check if specific instance is needed
                     if attrs['req_inst'] != '':
@@ -386,13 +386,13 @@ class ModuleManager(object):
     def get_loaded_module_list(self):
         """Returns a list of the loaded instance names
         """
-        return self.loaded_modules.keys()
+        return list(self.loaded_modules.keys())
 
     def get_instance_list_by_type(self, module_type):
         """Returns a list of module instances (loaded) with the requested type
         """
         instances = []
-        for inst_name, mod in self.loaded_modules.iteritems():
+        for inst_name, mod in self.loaded_modules.items():
             if mod.get_module_type() == module_type:
                 instances.append(inst_name)
 
@@ -539,7 +539,7 @@ class ModuleManager(object):
         """
 
         attached_modules = {}
-        for module_name, module in self.loaded_modules.iteritems():
+        for module_name, module in self.loaded_modules.items():
             attached_modules[module_name] = module.get_loaded_kwargs('loaded_by')
 
         return attached_modules
@@ -566,7 +566,7 @@ class ModuleManager(object):
 
         # remove custom hooks
         remove_hooks = []
-        for hook_name, hook in self.custom_hooks.iteritems():
+        for hook_name, hook in self.custom_hooks.items():
             if hook.owner == module_name:
                 remove_hooks.append(hook_name)
 
@@ -581,7 +581,7 @@ class ModuleManager(object):
 
         # remove custom methods
         remove_methods = []
-        for method_name, method in self.custom_methods.iteritems():
+        for method_name, method in self.custom_methods.items():
             if method.owner == module_name:
                 remove_methods.append(method_name)
 
@@ -591,7 +591,7 @@ class ModuleManager(object):
 
         # remove interrupt handlers
         remove_interrupts = []
-        for interrupt_name, interrupt in self.external_interrupts.iteritems():
+        for interrupt_name, interrupt in self.external_interrupts.items():
             if interrupt.owner == module_name:
                 remove_interrupts.append(interrupt_name)
 
@@ -601,11 +601,11 @@ class ModuleManager(object):
                               .format(interrupt))
 
         # detach hooks
-        for hook_name, hook in self.custom_hooks.iteritems():
+        for hook_name, hook in self.custom_hooks.items():
             for attached in hook.find_callback_by_argument(module_name):
                 hook.detach_callback(attached)
 
-        for hook_name, hook in self.attached_hooks.iteritems():
+        for hook_name, hook in self.attached_hooks.items():
             for attached in hook.find_callback_by_argument(module_name):
                 hook.detach_callback(attached)
 
@@ -618,7 +618,7 @@ class ModuleManager(object):
     def list_discovered_modules(self):
         """Returns a list of all module types that have been discovered
         """
-        return dict([(name, mod.get_module_desc()) for name, mod in self.found_modules.iteritems()])
+        return dict([(name, mod.get_module_desc()) for name, mod in self.found_modules.items()])
 
     def module_handler(self, which_module, *args, **kwargs):
         """Function called by a live module to carry out various
@@ -626,9 +626,9 @@ class ModuleManager(object):
            Returns various different values depending on the requested method
         """
         if 'get_available_drivers' in args:
-            return [x.get_module_desc().arg_name for x in self.found_modules.values()]
+            return [x.get_module_desc().arg_name for x in list(self.found_modules.values())]
 
-        for kwg, value in kwargs.iteritems():
+        for kwg, value in kwargs.items():
             if kwg in MODULE_HANDLER_LOGGING_KWARGS:
                 # dispatch logger
                 self._log_module_message(which_module, kwg, value)

@@ -254,7 +254,7 @@ class Module(object):
         """
         property_list = {}
 
-        for prop_name, prop_data in mod_prop.iteritems():
+        for prop_name, prop_data in mod_prop.items():
             property_list[prop_name] =\
                 ModuleProperty(property_desc=prop_data['property_desc'],
                                permissions=prop_data['permissions'],
@@ -268,9 +268,9 @@ class Module(object):
         """
         method_list = {}
 
-        for method_name, method_data in mod_methods.iteritems():
+        for method_name, method_data in mod_methods.items():
             arg_list = {}
-            for arg_name, arg_data in method_data['method_args'].iteritems():
+            for arg_name, arg_data in method_data['method_args'].items():
                 arg_list[arg_name] =\
                     ModuleMethodArgument(argument_desc=arg_data['arg_desc'],
                                          required=arg_data['arg_required'],
@@ -308,7 +308,7 @@ class Module(object):
         """
         property_list = {}
 
-        for property_name, prop in cls._properties.iteritems():
+        for property_name, prop in cls._properties.items():
             property_dict = {}
             # build dictionary
             property_dict['property_desc'] = prop.property_desc
@@ -325,14 +325,14 @@ class Module(object):
         """
         method_list = {}
 
-        for method_name, method in cls._methods.iteritems():
+        for method_name, method in cls._methods.items():
             method_dict = {}
             arg_list = {}
 
             method_dict['method_desc'] = method.method_desc
 
             # arguments
-            for arg_name, arg in method.method_args.iteritems():
+            for arg_name, arg in method.method_args.items():
                 arg_dict = {}
                 arg_dict['arg_desc'] = arg.argument_desc
                 arg_dict['arg_required'] = arg.required
@@ -368,7 +368,7 @@ class Module(object):
         """Automatically connect property descriptions
            to methods in the class declaration
         """
-        for method_name, method in self._methods.iteritems():
+        for method_name, method in self._methods.items():
             if protected_methods:
                 method_name = '_' + method_name
             try:
@@ -381,7 +381,7 @@ class Module(object):
         """Automatically connect method descriptions
            to methods in the class declaration
         """
-        for prop_name, prop in self._properties.iteritems():
+        for prop_name, prop in self._properties.items():
             # search for object methods
             getter_name = 'get_'
             setter_name = 'set_'

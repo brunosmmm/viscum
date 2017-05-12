@@ -258,7 +258,7 @@ class ModuleManagerScript(object):
            Typically this will attach callbacks and do initialization
         """
         compiled_script = compile(instrumented_code, '<string>', 'exec')
-        exec compiled_script in self.script_scope
+        exec(compiled_script, self.script_scope)
 
     def _call_custom_method(self, method_name, *args, **kwargs):
         """Tries to call method through module manager
