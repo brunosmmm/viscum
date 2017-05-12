@@ -202,6 +202,11 @@ class Module(object):
                     # fail, didn't provide required argument
                     raise ModuleMethodError('missing required argument')
 
+            # check for unknown kwargs
+            for name, value in kwargs.items():
+                if name not in method_args:
+                    raise ModuleMethodError('unknown argument "{}" passed'.format(name))
+
             return_value = None
             try:
                 if self._methods[__method_name].method_call is not None:
