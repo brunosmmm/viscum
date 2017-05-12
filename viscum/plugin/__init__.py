@@ -150,7 +150,10 @@ class Module(object):
                ModulePropertyPermissions.READ or\
                self._properties[property_name].permissions ==\
                ModulePropertyPermissions.RW:
-                return self._properties[property_name].getter()
+                if self._properties[property_name].getter is not None:
+                    return self._properties[property_name].getter()
+                else:
+                    return None
             else:
                 raise ModulePropertyPermissionError('property "{}" does not '
                                                     'have read permissions'
@@ -168,7 +171,10 @@ class Module(object):
                ModulePropertyPermissions.WRITE or\
                self._properties[property_name].permissions ==\
                ModulePropertyPermissions.RW:
-                return self._properties[property_name].setter(value)
+                if self._properties[property_name].setter is not None:
+                    return self._properties[property_name].setter(value)
+                else:
+                    return None
             else:
                 raise ModulePropertyPermissionError('property "{}" does not '
                                                     'have write permissions'
