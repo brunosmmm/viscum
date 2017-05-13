@@ -411,7 +411,7 @@ class ModuleManager(object):
         except CancelScriptLoading as ex:
             self.logger.info('loading of script {} was canceled'
                              ' by the script with: {}'
-                             .format(script, ex.message))
+                             .format(script, ex))
         except Exception as ex:
             self.logger.warning('failed to load script {} with: {}'
                                 .format(script, ex))
