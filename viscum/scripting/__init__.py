@@ -2,7 +2,7 @@
 
 import ast
 import symtable
-import codegen
+import astor
 from viscum.plugin import ModuleCapabilities as ModCap
 from viscum.hook import ModuleManagerHookActions
 from viscum.scripting.exception import (InvalidModuleError,
@@ -28,7 +28,7 @@ class ModuleManagerScript(object):
         """
         # module_manager reference
         self._modman = module_manager
-
+        self._sanitizer_logging = None
         # try to open, parse
         with open(source_file, 'r') as f:
             try:
@@ -67,7 +67,8 @@ class ModuleManagerScript(object):
             Callback for logging
         """
         # sanitize code
-        parsed_code = CodeSanitizer(logging_function).visit(ast.parse(code))
+        tree = ast.parse(code)
+        parsed_code = CodeSanitizer(logging_function).visit(tree)
 
         # fix code
         ast.fix_missing_locations(parsed_code)
@@ -132,7 +133,7 @@ class ModuleManagerScript(object):
             return required_modules
 
         # de-parse the sanitized AST
-        sanitized_text = codegen.to_source(sanitized_code)
+        sanitized_text = astor.to_source(sanitized_code)
         symtab = symtable.symtable(sanitized_text, '<string>', 'exec')
 
         required_modules = set()
