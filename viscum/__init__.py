@@ -18,7 +18,7 @@ from viscum.exception import (InterruptAlreadyInstalledError,
                               MethodAlreadyInstalledError,
                               DeferModuleDiscovery)
 from viscum.hook import (ModuleManagerHook,
-                         ModuleManagerHookActions)
+                         ModuleManagerHookActions as MMHookAct)
 from viscum.scripting import (ModuleManagerScript,
                               DeferScriptLoading,
                               CancelScriptLoading)
@@ -192,7 +192,7 @@ class ModuleManager(object):
             Hook name
         callback: function
             Callback function called on hook triggered
-        action: ModuleManagerHookActions
+        action: MMHookAct
             Action to be performed on trigger event
         argument: list, dict
             Arguments passed to callback
@@ -220,7 +220,7 @@ class ModuleManager(object):
            Hook name
         callback: function
            Callback function called on hook triggered
-        action: ModuleManagerHookActions
+        action: MMHookAct
            Action to be performed on trigger event
         driver_class: class
            Plugin class as argument
@@ -304,7 +304,13 @@ class ModuleManager(object):
                          .format(module_class.get_module_desc().arg_name))
 
     def _module_discovery(self, module):
-        """Main module discovery routine, tries to load a module file
+        """Discover all modules.
+
+        Tries to load a module file
+        Args
+        ----
+        module: str
+           Module name (Actual python module)
         """
         # ignore root
         if module == '__init__':
@@ -597,7 +603,12 @@ class ModuleManager(object):
                 'error': 'invalid_module'}
 
     def get_module_info(self, module_name):
-        """Returns basic module info, serializable or descriptive error
+        """Return basic module info, serializable or descriptive error.
+
+        Args
+        ____
+        module_name: str
+            Plugin type
         """
         if module_name in self.found_modules:
             return self.found_modules[module_name].get_module_info()
@@ -607,10 +618,18 @@ class ModuleManager(object):
                 'error': 'invalid_module'}
 
     def get_module_property(self, module_name, property_name):
-        """Returns the value of a module property or descriptive error
+        """Return the value of a module property or descriptive error.
+
+        Args
+        ----
+        module_name: str
+           Instance name
+        property_name:
+           Name of the property requested
         """
         try:
-            return self.loaded_modules[module_name].get_property_value(property_name)
+            the_module = self.loaded_modules[module_name]
+            return the_module.get_property_value(property_name)
         except ModulePropertyPermissionError:
             self.logger.warn('tried to read write-only property '
                              '"{}" of instance "{}"'
@@ -624,7 +643,8 @@ class ModuleManager(object):
                     'error': 'invalid_property'}
         except KeyError:
             if module_name not in self.loaded_modules:
-                self.logger.error('get_module_property: instance "{}" not loaded'
+                self.logger.error('get_module_property: '
+                                  'instance "{}" not loaded'
                                   .format(module_name))
             else:
                 self.logger.error('get_module_property: unknown error')
@@ -632,12 +652,23 @@ class ModuleManager(object):
                     'error': 'invalid_instance'}
 
     def set_module_property(self, instance_name, property_name, value):
-        """Sets the value of a module property. NO type checking is done
-           Returns status of the attempt
+        """Set the value of a module property.
+
+        NO type checking is done
+        Returns status of the attempt
+        Args
+        ----
+        instance_name: str
+            Instance name
+        property_name: str
+            Name of requested property
+        value: object
+            Some value to be written
         """
         try:
-            self.loaded_modules[instance_name].set_property_value(property_name,
-                                                                  value)
+            the_instance = self.loaded_modules[instance_name]
+            the_instance.set_property_value(property_name,
+                                            value)
             return {'status': 'ok'}
         except ModulePropertyPermissionError:
             self.logger.error('tried to write read-only property '
@@ -657,7 +688,12 @@ class ModuleManager(object):
                     'error': 'invalid_instance'}
 
     def get_module_property_list(self, module_name):
-        """Returns a serializable dictionary of the module's properties
+        """Return a serializable dictionary of the module's properties.
+
+        Args
+        ----
+        module_name:
+           Plugin type
         """
         if module_name in self.found_modules:
             return self.found_modules[module_name].get_module_properties()
@@ -667,7 +703,12 @@ class ModuleManager(object):
                 'error': 'invalid_module'}
 
     def get_module_method_list(self, module_name):
-        """Returns a serializable dictionary of the module's methods
+        """Return a serializable dictionary of the module's methods.
+
+        Args
+        ----
+        module_name:
+           Plugin type
         """
         if module_name in self.found_modules:
             return self.found_modules[module_name].get_module_methods()
@@ -677,15 +718,25 @@ class ModuleManager(object):
                 'error': 'invalid_module'}
 
     def call_module_method(self, __instance_name, __method_name, **kwargs):
-        """Attempts to call a module method.
-           In case of failure returns a descriptive error
+        """Attempt calling a module method.
+
+        In case of failure returns a descriptive error
+        Args
+        ----
+        __instance_name: str
+            Name of instance
+        __method_name: str
+            Name of method
+        kwargs: dict
+            Keyword arguments passed to method
         """
         if __instance_name in self.loaded_modules:
             try:
                 # TODO: for consistency return not
                 # the actual value but a dictionary?
-                return self.loaded_modules[__instance_name].call_method(__method_name,
-                                                                        **kwargs)
+                the_instance = self.loaded_modules[__instance_name]
+                return the_instance.call_method(__method_name,
+                                                **kwargs)
             except ModuleMethodError as e:
                 self.logger.warn('call to method "{}" of instance '
                                  '"{}" failed with: "{}"'
@@ -701,38 +752,52 @@ class ModuleManager(object):
                 'error': 'invalid_instance'}
 
     def list_loaded_modules(self):
-        """Returns a dictionary that contains the names
-           of instances currently loaded as keys
-           and which module owns them as values.
-           Note that if there is no specific owner,
-           they are owned by the module manager, shown as 'modman'
-        """
+        """Return a dictionary that contains instances currently loaded.
 
+        Instances currently loaded as keys
+        and which module owns them as values.
+        Note that if there is no specific owner,
+        they are owned by the module manager, shown as 'modman'
+        """
         attached_modules = {}
         for module_name, module in self.loaded_modules.items():
-            attached_modules[module_name] = module.get_loaded_kwargs('loaded_by')
+            attached_modules[module_name] =\
+                module.get_loaded_kwargs('loaded_by')
 
         return attached_modules
 
     def unload_module(self, module_name):
-        """Unload module wrapper function
+        """Unload module wrapper function.
+
+        Args
+        ----
+        module_name: str
+            Instance name
         """
         self._unload_module(module_name)
 
     def _unload_module(self, module_name, requester='modman'):
-        """Unload a module and automatically cleanup after it
+        """Unload a module and automatically cleanup after it.
+
+        Args
+        ----
+        module_name: str
+            Instance name
+        requester: str
+            Name of instance which requested the unloading procedure
         """
         if module_name not in self.loaded_modules:
             raise ModuleNotLoadedError('cant unload {}: module not loaded'
                                        .format(module_name))
 
-        if requester != self.loaded_modules[module_name].get_loaded_kwargs('loaded_by'):
+        the_module = self.loaded_modules[module_name]
+        if requester != the_module.get_loaded_kwargs('loaded_by'):
             if requester != 'modman':
                 raise CannotUnloadError('cannot unloaded: forbidden'
                                         ' by module manager')
 
         # do unloading procedure
-        self.loaded_modules[module_name].module_unload()
+        the_module.module_unload()
 
         # remove custom hooks
         remove_hooks = []
@@ -744,7 +809,8 @@ class ModuleManager(object):
             # notify attached
             for attached in self.custom_hooks[hook].attached_callbacks:
                 if attached.argument in self.loaded_modules:
-                    self.loaded_modules[attached.argument].handler_communicate(reason='provider_unloaded')
+                    att_arg = self.loaded_modules[attached.argument]
+                    att_arg.handler_communicate(reason='provider_unloaded')
 
             del self.custom_hooks[hook]
             self.logger.debug('removing custom hook: "{}"'.format(hook))
@@ -786,17 +852,27 @@ class ModuleManager(object):
                          .format(module_name, requester))
 
     def list_discovered_modules(self):
-        """Returns a list of all module types that have been discovered
-        """
-        return dict([(name, mod.get_module_desc()) for name, mod in self.found_modules.items()])
+        """Return a list of all module types that have been discovered."""
+        return dict([(name, mod.get_module_desc())
+                     for name, mod in self.found_modules.items()])
 
     def module_handler(self, which_module, *args, **kwargs):
-        """Function called by a live module to carry out various
-           operations within the module manager scope.
-           Returns various different values depending on the requested method
+        """Carry out various operations.
+
+        Operations within the module manager scope, called by a live module
+        Returns various different values depending on the requested method
+        Args
+        ----
+        which_module: Module
+            The plugin object calling this function
+        args: list
+            Argument list
+        kwargs: dict
+            Keyword arguments
         """
         if 'get_available_drivers' in args:
-            return [x.get_module_desc().arg_name for x in list(self.found_modules.values())]
+            return [x.get_module_desc().arg_name
+                    for x in list(self.found_modules.values())]
 
         for kwg, value in kwargs.items():
             if kwg in MODULE_HANDLER_LOGGING_KWARGS:
@@ -814,13 +890,16 @@ class ModuleManager(object):
                     first_argument = value['method']
                     second_argument = value['args']
                 try:
-                    return self.call_custom_method(first_argument, *second_argument)
+                    return self.call_custom_method(first_argument,
+                                                   *second_argument)
                 except MethodNotAvailableError as ex:
                     self.logger.error('module "{}" tried to call '
                                       'invalid method: "{}"'
                                       .format(which_module, first_argument))
-                    self.loaded_modules[which_module].handler_communicate(reason='call_method_failed',
-                                                                          exception=ex)
+                    the_module = self.loaded_modules[which_module]
+                    the_module.handler_communicate(
+                        reason='call_method_failed',
+                        exception=ex)
                     return None
 
             if kwg == 'attach_custom_hook':
@@ -837,8 +916,10 @@ class ModuleManager(object):
                     self.logger.error('module "{}" tried to attach '
                                       'to invalid hook: "{}"'
                                       .format(which_module, first_argument))
-                    self.loaded_modules[which_module].handler_communicate(reason='attach_hook_failed',
-                                                                          exception=ex)
+                    the_module = self.loaded_modules[which_module]
+                    the_module.handler_communicate(
+                        reason='attach_hook_failed',
+                        exception=ex)
 
             if kwg == 'attach_manager_hook':
                 if isinstance(value, (list, tuple)):
@@ -854,8 +935,10 @@ class ModuleManager(object):
                     self.logger.error('module "{}" tried to attach '
                                       'to invalid hook: "{}"'
                                       .format(which_module, first_argument))
-                    self.loaded_modules[which_module].handler_communicate(reason='attach_hook_failed',
-                                                                          exception=ex)
+                    the_module = self.loaded_modules[which_module]
+                    the_module.handler_communicate(
+                        reason='attach_hook_failed',
+                        exception=ex)
 
             if kwg == 'load_module':
                 if isinstance(value, (list, tuple)):
@@ -869,24 +952,30 @@ class ModuleManager(object):
                                              which_module,
                                              **second_argument)
                 except (ModuleLoadError, ModuleAlreadyLoadedError) as ex:
-                    self.loaded_modules[which_module].handler_communicate(reason='load_module_failed',
-                                                                          exception=ex)
+                    the_module = self.loaded_modules[which_module]
+                    the_module.handler_communicate(
+                        reason='load_module_failed',
+                        exception=ex)
 
             if kwg == 'unload_module':
                 try:
                     self._unload_module(value,
                                         which_module)
                 except (ModuleNotLoadedError, CannotUnloadError) as ex:
-                    self.loaded_modules[which_module].handler_communicate(reason='unload_module_failed',
-                                                                          exception=ex)
+                    the_module = self.loaded_modules[which_module]
+                    the_module.handler_communicate(
+                        reason='unload_module_failed',
+                        exception=ex)
 
             if kwg == 'install_custom_hook':
                 try:
                     self._install_custom_hook(value,
                                               which_module)
                 except HookAlreadyInstalledError as ex:
-                    self.loaded_modules[which_module].handler_communicate(reason='install_hook_failed',
-                                                                          exception=ex)
+                    the_module = self.loaded_modules[which_module]
+                    the_module.handler_communicate(
+                        reason='install_hook_failed',
+                        exception=ex)
 
             if kwg == 'install_custom_method':
                 if isinstance(value, (list, tuple)):
@@ -900,8 +989,10 @@ class ModuleManager(object):
                                                 second_argument,
                                                 which_module)
                 except MethodAlreadyInstalledError as ex:
-                    self.loaded_modules[which_module].handler_communicate(reason='install_method_failed',
-                                                                          exception=ex)
+                    the_module = self.loaded_modules[which_module]
+                    the_module.handler_communicate(
+                        reason='install_method_failed',
+                        exception=ex)
 
             if kwg == 'install_interrupt_handler':
                 if isinstance(value, (list, tuple)):
@@ -915,20 +1006,39 @@ class ModuleManager(object):
                                                     second_argument,
                                                     which_module)
                 except InterruptAlreadyInstalledError as ex:
-                    self.loaded_modules[which_module].handler_communicate(reason='install_interrupt_failed',
-                                                                          exception=ex)
+                    the_module = self.loaded_modules[which_module]
+                    the_module.handler_communicate(
+                        reason='install_interrupt_failed',
+                        exception=ex)
 
             if kwg == 'require_module_instance':
                 if value not in self.loaded_modules:
-                    raise ModuleLoadError('instance {} is not present'.format(value))
+                    raise ModuleLoadError('instance {} '
+                                          'is not present'.format(value))
 
     def _log_module_message(self, module, level, message):
-        """Helper function to execute module-level logging
+        """Perform plugin-level logging.
+
+        Args
+        ----
+        module: str
+            Instance name
+        level: str
+            Log level
+        message: str
+            The message to be logged
         """
         self.log_message(level, "{}: {}".format(module, message))
 
     def log_message(self, level, message):
-        """Helper function for general logging
+        """Perform general logging.
+
+        Args
+        ----
+        level: str
+           Log level
+        message: str
+           The message to be logged
         """
         if level == 'log_info':
             self.logger.info(message)
@@ -939,13 +1049,21 @@ class ModuleManager(object):
 
     def _trigger_hooks(self, hook_dict, hook_name, **kwargs):
         """Trigger a registered hook with the passed arguments.
-           This will call all the callbacks that are attached to that hook.
+
+        This will call all the callbacks that are attached to that hook.
+        Args
+        ----
+        hook_dict: dict
+           Name-indexed dictionary of registered hooks
+        hook_name: str
+           Name of the hook to be triggered
+        kwargs: dict
+           Hook arguments
         """
         for attached_callback in hook_dict[hook_name].attached_callbacks:
             try:
                 if attached_callback.callback(**kwargs):
-                    if attached_callback.action ==\
-                       ModuleManagerHookActions.LOAD_MODULE:
+                    if attached_callback.action == MMHookAct.LOAD_MODULE:
                         # load the module!
                         self.logger.debug('some hook returned true, '
                                           'loading module {}'
@@ -953,15 +1071,16 @@ class ModuleManager(object):
                         # module must accept same kwargs, this is mandatory
                         # with this discovery event
                         try:
-                            self.load_module(attached_callback.argument.get_module_desc().arg_name,
+                            cb_arg = attached_callback.argument
+                            module_name = cb_arg.get_module_desc().arg_name
+                            self.load_module(module_name,
                                              **kwargs)
                         except Exception as ex:
                             self.logger.error('loading of module of class '
                                               '"{}" failed with: {}'
-                                              .format(attached_callback.argument.__name__,
+                                              .format(cb_arg.__name__,
                                                       str(ex)))
-                    elif attached_callback.action ==\
-                         ModuleManagerHookActions.UNLOAD_MODULE:
+                    elif attached_callback.action == MMHookAct.UNLOAD_MODULE:
                         # unload the attached module
                         self.logger.debug('a hook required module '
                                           '{} to be unloaded'
@@ -975,17 +1094,38 @@ class ModuleManager(object):
                                           str(ex)))
 
     def trigger_custom_hook(self, hook_name, **kwargs):
-        """Hook trigger wrapper function for custom hooks
+        """Trigger an installed hook.
+
+        Args
+        ----
+        hook_name: str
+           Hook name
+        kwargs: dict
+           Keyword arguments
         """
         self._trigger_hooks(self.custom_hooks, hook_name, **kwargs)
 
     def _trigger_manager_hook(self, hook_name, **kwargs):
-        """Hook trigger wrapper function for internal module manager hooks
+        """Trigger an internal manager hook.
+
+        Args
+        ----
+        hook_name: str
+           Hook name
+        kwargs: dict
+           Keyword arguments
         """
         self._trigger_hooks(self.attached_hooks, hook_name, **kwargs)
 
     def external_interrupt(self, interrupt_key, **kwargs):
-        """External interrupt trigger
+        """External interrupt trigger.
+
+        Args
+        ----
+        interrupt_key: str
+            Interrupt name
+        kwargs: dict
+            Keyword arguments
         """
         if interrupt_key in self.external_interrupts:
             self.external_interrupts[interrupt_key].call(**kwargs)
