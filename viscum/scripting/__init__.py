@@ -3,7 +3,7 @@
 import ast
 import symtable
 import codegen
-from viscum.plugin import ModuleCapabilities
+from viscum.plugin import ModuleCapabilities as ModCap
 from viscum.hook import ModuleManagerHookActions
 from viscum.scripting.exception import (InvalidModuleError,
                                         DeferScriptLoading,
@@ -15,7 +15,17 @@ class ModuleManagerScript(object):
     """Script parser and container class."""
 
     def __init__(self, source_file, module_manager, initialize=False):
+        """Initialize.
 
+        Args
+        ----
+        source_file: str
+            File path
+        module_manager: ModuleManager
+            Reference to module manager
+        initialize: bool
+            Automatically initialize script
+        """
         # module_manager reference
         self._modman = module_manager
 
@@ -45,9 +55,16 @@ class ModuleManagerScript(object):
 
     @staticmethod
     def sanitize_code(code, logging_function=None):
-        """Sanitize an AST by removing statements defined as illegal
-           scripts should be simple and so are not allowed to import modules
-           for example
+        """Sanitize an AST by removing statements defined as illegal.
+
+        Scripts should be simple and so are not allowed to import modules,
+        for example.
+        Args
+        ----
+        code: TODO what type is this
+            Compiled script code
+        logging_function: function, NoneType
+            Callback for logging
         """
         # sanitize code
         parsed_code = CodeSanitizer(logging_function).visit(ast.parse(code))
@@ -58,9 +75,15 @@ class ModuleManagerScript(object):
         return parsed_code
 
     def _parse_more(self, sanitized_code, global_scope):
-        """Parse code a bit more, look into symbol table
-        """
+        """Parse code a bit more, look into symbol table.
 
+        Args
+        ----
+        sanitized_code: ???
+            The compiled and sanitized code
+        global_scope: dict
+            Scope in which the code is executed
+        """
         def parse_symtab(symtab):
             required_modules = set()
             # go through symbols and detect those that have not been assigned
@@ -86,12 +109,13 @@ class ModuleManagerScript(object):
                         # at the moment
                         # if plugin has multi-instance capability, the name
                         # without a suffix accesses the class
-                        if ModuleCapabilities.MultiInstanceAllowed in\
-                           self._modman.get_module_capabilities(module_type) and\
+                        mod_caps = self._modman.get_module_capabilities(
+                            module_type)
+                        if ModCap.MultiInstanceAllowed in mod_caps and\
                            instance_name != '':
                             raise DeferScriptLoading({'type': module_type,
                                                       'inst': instance_name})
-                        elif ModuleCapabilities.MultiInstanceAllowed not in self._modman.get_module_capabilities(module_type):
+                        elif ModCap.MultiInstanceAllowed not in mod_caps:
                             raise DeferScriptLoading({'type': module_type,
                                                       'inst': module_type})
                         else:
@@ -122,12 +146,22 @@ class ModuleManagerScript(object):
         return required_modules
 
     def _instrument_code(self, sanitized_code):
-        """Insert several custom variables and functions in the code
+        """Insert several custom variables and functions in the code.
+
+        Args
+        ----
+        sanitized_code: ???
+           The sanitized code
         """
         return sanitized_code
 
     def _script_print_statement(self, *args):
-        """Logs a print statement executed by script
+        """Log a print statement executed by script.
+
+        Args
+        ----
+        args: list
+           Argument list
         """
         # try to transform everything in strings
         msg_list = [str(arg) for arg in args]
@@ -137,14 +171,28 @@ class ModuleManagerScript(object):
                                  .format(self.name, message))
 
     def _sanitizer_logging(self, level, message):
-        """Logging for CodeSanitizer objects
+        """Log CodeSanitizer object messages.
+
+        Args
+        ----
+        level: str
+           Log level
+        message: str
+           The message
         """
         self._modman.log_message(level, 'scripting: {}'.format(message))
 
     def _require_module_instance(self, module_type, instance_name=None):
-        """Guard execution by requiring that a specific instance be present
-           If not present, script execution will be deferred until it is
-           present
+        """Guard execution by requiring that a specific instance be present.
+
+        If not present, script execution will be deferred until it is
+        present.
+        Args
+        ----
+        module_type: str
+           Plugin type
+        instance_name: str
+           Name of the required instance
         """
         # detect if this type of module is available
         if module_type not in self._modman.list_discovered_modules():
@@ -152,7 +200,7 @@ class ModuleManagerScript(object):
                                      .format(module_type))
 
         # differentiate between multiple instance and single instance
-        if ModuleCapabilities.MultiInstanceAllowed in\
+        if ModCap.MultiInstanceAllowed in\
            self._modman.get_module_capabilities(module_type):
             if instance_name is None:
                 raise ValueError('must specify an instance name '
@@ -168,7 +216,14 @@ class ModuleManagerScript(object):
             raise DeferScriptLoading({'type': module_type, 'inst': _inst_name})
 
     def _attach_man_hook(self, hook_name, cb):
-        """Attach to manager system hooks
+        """Attach to manager system hooks.
+
+        Args
+        ----
+        hook_name: str
+            Name of the hook to attach to
+        cb: function
+            Hook callback
         """
         self._modman.attach_manager_hook(hook_name,
                                          cb,
@@ -176,7 +231,14 @@ class ModuleManagerScript(object):
                                          None)
 
     def _attach_custom_hook(self, hook_name, cb):
-        """Attach to custom hooks
+        """Attach to custom hooks.
+
+        Args
+        ----
+        hook_name: str
+            Name of the hook to attach to
+        cb: function
+            Hook callback
         """
         self._modman.attach_custom_hook(hook_name,
                                         cb,
@@ -184,7 +246,12 @@ class ModuleManagerScript(object):
                                         None)
 
     def _set_name(self, name):
-        """Set a friendly name for logging
+        """Set a friendly name for logging.
+
+        Args
+        ----
+        name: str
+            A name
         """
         if self._name_set:
             return
@@ -193,18 +260,29 @@ class ModuleManagerScript(object):
         self._name_set = True
 
     def _cancel_exec(self, reason=None):
-        """Cancel loading for some reason
+        """Cancel loading for some reason.
+
+        Args
+        ----
+        reason: str
+           A reason for cancelling
         """
         raise CancelScriptLoading(reason)
 
     def _load_module(self, module_name, **kwargs):
-        """Load a plugin
+        """Load a plugin.
+
+        Args
+        ----
+        module_name: str
+            Plugin name
+        kwargs: list
+            Arguments to be passed at loading time
         """
         self._modman.load_module(module_name, **kwargs)
 
     def initialize_script(self):
-        """Initializes the compiled code
-        """
+        """Initialize the compiled code."""
         if self._executed_once:
             # already initialized (should raise?)
             return
@@ -241,43 +319,92 @@ class ModuleManagerScript(object):
         self._executed_once = True
 
     def _execute_code(self, instrumented_code):
-        """Executes the script body. Should only be done once, normally
-           Typically this will attach callbacks and do initialization
+        """Execute the script body.
+
+        Should only be done once, normally.
+        Typically this will attach callbacks and do initialization
+        Args
+        ----
+        instrumented_code: str
+           The previously instrumented code
         """
         compiled_script = compile(instrumented_code, '<string>', 'exec')
         exec(compiled_script, self.script_scope)
 
     def _call_custom_method(self, method_name, *args, **kwargs):
-        """Tries to call method through module manager
+        """Call a method through module manager.
+
+        Args
+        ----
+        method_name: str
+           Name of method
+        args: list
+           Argument list
+        kwargs: dict
+           Keyword arguments
         """
         return self._modman.call_module_method(method_name, *args, **kwargs)
 
 
 class CodeSanitizer(ast.NodeTransformer):
-    """Code sanitizer
-       Remove code deemed unsafe or not allowed
+    """Code sanitizer.
+
+    Remove code deemed unsafe or not allowed
     """
 
     def __init__(self, logging_function=None):
+        """Initialize.
+
+        Args
+        ----
+        logging_function: function
+           Callback for logging
+        """
         super(CodeSanitizer, self).__init__()
         self._logfn = logging_function
 
     def log(self, level, message):
-        """Log a message if logger function available
+        """Log a message if logger function available.
+
+        Args
+        ----
+        level: str
+           Log level
+        message: str
+           The message
         """
         if self._logfn is not None:
             self._logfn(level, message)
 
     def visit_Import(self, node):
-        """Visit import statements, which will be removed
+        """Visit import statements, which will be removed.
+
+        Args
+        ----
+        node: TODO check type
+            A node being visited
         """
         # Import statements not allowed
         raise ScriptSyntaxError('import statements are not allowed')
 
     def visit_ImportFrom(self, node):
+        """Visit ImportFrom statements.
+
+        Args
+        ----
+        node: TODO check type
+            A node being visited
+        """
         raise ScriptSyntaxError('import statements are not allowed')
 
     def visit_Print(self, node):
+        """Visit print statements.
+
+        Args
+        ----
+        node: TODO check type
+            A node being visited
+        """
         # replace print statement with module manager-based logging
         return ast.copy_location(ast.Expr(
             value=ast.Call(
@@ -290,21 +417,47 @@ class CodeSanitizer(ast.NodeTransformer):
             node)
 
     def visit_While(self, node):
+        """Visit while statements.
+
+        Args
+        ----
+        node: TODO check type
+            A node being visited
+        """
         raise ScriptSyntaxError('while statements are not allowed')
 
 
 class ModuleProxy(object):
-    """Module proxy class to invoke methods and read properties transparently
-    """
+    """Module proxy to invoke methods and read properties transparently."""
+
     def __init__(self, module_name, module_manager, instance_name=None):
+        """Initialize.
+
+        Args
+        ----
+        module_name: str
+           Plugin name
+        module_manager: ModuleManager
+           Reference to the module manager
+        instance_name: str
+           Name of instance
+        """
         self._modman = module_manager
         self._modname = module_name
         self._instname = instance_name
 
     def get_available_instances(self):
+        """Return available instances."""
         return self._modman.get_instance_list_by_type(self._modname)
 
     def get_instance(self, instance_name):
+        """Return a proxy for an instance.
+
+        Args
+        ----
+        instance_name: str
+           Instance name
+        """
         _instance_name = '{}-{}'.format(self._modname, instance_name)
         if _instance_name in self.get_available_instances():
             return ModuleProxy(self._modname, self._modman, instance_name)
@@ -313,8 +466,14 @@ class ModuleProxy(object):
                                   'inst': instance_name})
 
     def __getattr__(self, name):
-        # search for the requested attribute, look into properties and methods
+        """Search for the requested attribute.
 
+        look into properties and methods
+        Args
+        ----
+        name: str
+            Attribute name (property or method)
+        """
         # try to get instance name
         if self._instname is None:
             name_parts = self._modname.split('__')
