@@ -712,7 +712,7 @@ class ModuleManager(object):
 
             if kwg == 'require_module_instance':
                 if value not in self.loaded_modules:
-                    raise ModuleLoadError('instance {} is not present')
+                    raise ModuleLoadError('instance {} is not present'.format(value))
 
     def _log_module_message(self, module, level, message):
         """Helper function to execute module-level logging
@@ -760,11 +760,15 @@ class ModuleManager(object):
                                           .format(attached_callback.argument))
                         self.unload_module(attached_callback.argument)
             except Exception as ex:
+                if hasattr(ex, 'message'):
+                    msg = ex.message
+                else:
+                    msg = ''
                 self.logger.error('failed to call function '
                                   '{} attached to "{}" with: {}'
                                   .format(attached_callback,
                                           hook_name,
-                                          ex.message))
+                                          msg))
 
     def trigger_custom_hook(self, hook_name, **kwargs):
         """Hook trigger wrapper function for custom hooks
