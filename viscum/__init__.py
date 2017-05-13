@@ -216,16 +216,16 @@ class ModuleManager(object):
         except ImportError as error:
             self.logger.warning('could not register python module "{}": {}'
                                 .format(module,
-                                        error.message))
+                                        error))
         except DeferModuleDiscovery as ex:
             self.logger.info('deferring discovery of module')
             # hacky
-            self.deferred_discoveries[module] = ex.message
+            self.deferred_discoveries[module] = ex.args[0]
         except Exception as error:
-            raise  # debug
+            #raise  # debug
             # catch anything else because this cannot break the application
             self.logger.warning('could not register module {}: {}'
-                                .format(module, error.message))
+                                .format(module, error))
 
         # check for deferrals that depend on the previous loaded module
         deferred_done = []
@@ -270,7 +270,7 @@ class ModuleManager(object):
         except DeferScriptLoading as ex:
             self.logger.debug('deferring load of script {}, '
                               'which requires module {} to be active'
-                              .format(script, ex.message))
+                              .format(script, str(ex)))
             # put on deferred list
             if ex.message['type'] not in self.deferred_scripts:
                 self.deferred_scripts[ex.message['type']] = {script:
@@ -308,6 +308,7 @@ class ModuleManager(object):
     def load_module(self, module_name, **kwargs):
         """Load module by type name, with named arguments
         """
+        self.logger.info('Trying to load module of type "{}"'.format(module_name))
         return self._load_module(module_name, **kwargs)
 
     def _load_module(self, module_name, loaded_by='modman', **kwargs):
@@ -521,7 +522,7 @@ class ModuleManager(object):
                                  '"{}" failed with: "{}"'
                                  .format(__method_name,
                                          __instance_name,
-                                         e.message))
+                                         str(e)))
                 return {'status': 'error',
                         'error': 'call_failed'}
 
@@ -678,7 +679,7 @@ class ModuleManager(object):
 
             if kwg == 'unload_module':
                 try:
-                    self._unload_module(value[0],
+                    self._unload_module(value,
                                         which_module)
                 except (ModuleNotLoadedError, CannotUnloadError) as ex:
                     self.loaded_modules[which_module].handler_communicate(reason='unload_module_failed',
@@ -686,7 +687,7 @@ class ModuleManager(object):
 
             if kwg == 'install_custom_hook':
                 try:
-                    self._install_custom_hook(value[0],
+                    self._install_custom_hook(value,
                                               which_module)
                 except HookAlreadyInstalledError as ex:
                     self.loaded_modules[which_module].handler_communicate(reason='install_hook_failed',
@@ -751,7 +752,7 @@ class ModuleManager(object):
                             self.logger.error('loading of module of class '
                                               '"{}" failed with: {}'
                                               .format(attached_callback.argument.__name__,
-                                                      ex.message))
+                                                      str(ex)))
                     elif attached_callback.action ==\
                          ModuleManagerHookActions.UNLOAD_MODULE:
                         # unload the attached module
@@ -760,15 +761,11 @@ class ModuleManager(object):
                                           .format(attached_callback.argument))
                         self.unload_module(attached_callback.argument)
             except Exception as ex:
-                if hasattr(ex, 'message'):
-                    msg = ex.message
-                else:
-                    msg = ''
                 self.logger.error('failed to call function '
                                   '{} attached to "{}" with: {}'
                                   .format(attached_callback,
                                           hook_name,
-                                          msg))
+                                          str(ex)))
 
     def trigger_custom_hook(self, hook_name, **kwargs):
         """Hook trigger wrapper function for custom hooks
