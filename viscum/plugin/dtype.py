@@ -1,10 +1,9 @@
-"""Plugin system data types
-"""
+"""Plugin system data types."""
 
 
 class ModuleDataTypes:
-    """Data types enum
-    """
+    """Data types enumeration."""
+
     INT = 0
     FLOAT = 1
     STRING = 2

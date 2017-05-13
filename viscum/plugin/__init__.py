@@ -1,6 +1,5 @@
-"""
-Module Manager Plugin base class implementation
-"""
+"""Module Manager Plugin base class implementation."""
+
 from collections import namedtuple
 from viscum.plugin.exception import (ModuleLoadError,
                                      ModuleNotLoadedError,
@@ -18,7 +17,14 @@ ModuleArgument = namedtuple('ModuleArgument', ['arg_name', 'arg_help'])
 
 
 def read_json_from_file(filename):
-    """Reads JSON content from a file, returns dictionary"""
+    """Read JSON content from a file.
+
+    Args
+    ----
+    filename: str
+       File path
+    returns: dictionary
+    """
     data = {}
     with open(filename, 'r') as f:
         data = json.load(f)
@@ -27,19 +33,27 @@ def read_json_from_file(filename):
 
 
 def write_json_from_dict(filename, data):
-    """Writes formatted JSON data in file"""
+    """Write formatted JSON data in file.
+
+    Args
+    ----
+    filename: str
+       File Path
+    data: dict
+       Data to be written
+    """
     with open(filename, 'w') as f:
         json.dump(f, data)
 
 
 class ModuleCapabilities(object):
-    """Module capabilities enum"""
+    """Module capabilities enumeration."""
+
     MultiInstanceAllowed = 0
 
 
 class Module(object):
-    """The Module (plugin) main class implementation
-    """
+    """Module (plugin) main class implementation."""
 
     # these members are required to be defined in
     # a static way, so information can be retrieved
@@ -56,12 +70,20 @@ class Module(object):
     _mod_handler = None  # a handler to access the module manager methods
 
     def __init__(self, module_id, handler, **kwargs):
-        """Module constructor
+        """Initialize module.
 
            kwargs will be checked and exceptions raised if
            the input is not satisfactory
-        """
 
+        Args
+        ----
+        module_id: str
+            Assigned instance name
+        handler: function
+            Callback assigned by module manager for transactions
+        kwargs: dict
+            Invoking arguments
+        """
         # check the kwargs passed to constructor
         self._check_kwargs(**kwargs)
 
@@ -77,28 +99,33 @@ class Module(object):
 
     @classmethod
     def get_capabilities(cls):
-        """Returns the module's capabilities
-        """
+        """Return module's capabilities."""
         return cls._capabilities
 
     @classmethod
     def get_module_desc(cls):
-        """Returns module's description"""
+        """Return module's description."""
         return cls._module_desc
 
     @classmethod
     def get_required_kwargs(cls):
-        """Return a list of required arguments to spawn module"""
+        """Return a list of required arguments to spawn module."""
         return cls._required_kw
 
     @classmethod
     def get_optional_kwargs(cls):
-        """Return a list of optional arguments"""
+        """Return a list of optional arguments."""
         return cls._optional_kw
 
     @classmethod
     def _check_kwargs(cls, **kwargs):
-        """Verify if required kwargs are met, raise exception if not"""
+        """Verify if required kwargs are met, raise exception if not.
+
+        Args
+        ----
+        kwargs: dict
+            List of keyword arguments to check
+        """
         for kwg in cls._required_kw:
             if kwg.arg_name not in kwargs:
                 raise ModuleLoadError('missing argument: {}'
@@ -106,44 +133,85 @@ class Module(object):
                                       cls._module_desc.arg_name)
 
     def module_unload(self):
-        """Unload module procedure (module-specific, to be overriden)"""
+        """Unload module procedure (module-specific, to be overriden)."""
         pass
 
     def module_register(self, module_id, handler):
-        """Register module procedure, simply save information locally"""
+        """Register module procedure, simply save information locally.
+
+        Args
+        ----
+        module_id: str
+            Assigned instance name
+        handler: function
+            Handler function
+        """
         self._registered_id = module_id
         self._mod_handler = handler
 
     def handler_communicate(self, **kwargs):
-        """Handle communication (receive messages)
-           from manager (module-specific)"""
+        """Handle communication (receive messages) from manager.
+
+        Args
+        ----
+        kwargs: dict
+           Arguments
+        """
         pass
 
     def interrupt_handler(self, *args, **kwargs):
-        """Get attention of handler and execute some action"""
+        """Get attention of handler and execute some action.
+
+        Args
+        ----
+        args: list
+           Arguments
+        kwargs: dict
+           Keyword arguments
+        """
         if self._mod_handler is None or self._registered_id is None:
             raise ModuleNotLoadedError('module is not registered')
 
         return self._mod_handler(self._registered_id, *args, **kwargs)
 
     def log_info(self, message):
-        """Helper function that logs a message, level INFO
+        """Log a message, level INFO.
+
+        Args
+        ----
+        message: str
+           The message
         """
         self.interrupt_handler(log_info=message)
 
     def log_warning(self, message):
-        """Helper function that logs a message, level WARNING
+        """Log a message, level WARNING.
+
+        Args
+        ----
+        message: str
+           The message
         """
         self.interrupt_handler(log_warning=message)
 
     def log_error(self, message):
-        """Helper function that logs a message, level ERROR
+        """Log a message, level ERROR.
+
+        Args
+        ----
+        message: str
+           The message
         """
         self.interrupt_handler(log_error=message)
 
     def get_property_value(self, property_name):
         """Return the value of a property.
+
            Permissions are checked
+        Args
+        ----
+        property_name: str
+           Name of the property
         """
         if property_name in self._properties:
             if self._properties[property_name].permissions ==\
@@ -163,8 +231,15 @@ class Module(object):
                                          .format(property_name))
 
     def set_property_value(self, property_name, value):
-        """Sets the value of a property.
+        """Set the value of a property.
+
            Permissions are checked
+        Args
+        ----
+        property_name: str
+           Name of the property
+        value: object
+           Some value
         """
         if property_name in self._properties:
             if self._properties[property_name].permissions ==\
@@ -184,7 +259,12 @@ class Module(object):
                                          .format(property_name))
 
     def get_loaded_kwargs(self, arg_name):
-        """Return the arguments that the module was loaded with
+        """Return the arguments that the module was loaded with.
+
+        Args
+        ----
+        arg_name: str
+            Name of argument to be checked
         """
         if arg_name in self._loaded_kwargs:
             return self._loaded_kwargs[arg_name]
@@ -193,7 +273,14 @@ class Module(object):
 
     def call_method(self, __method_name, **kwargs):
         """Call a method declared by the module class.
+
            Method is called by name, returns whatever the module returns
+        Args
+        ----
+        __method_name: str
+            Name of method
+        kwargs: dict
+            keyword arguments passed to method
         """
         if __method_name in self._methods:
             method_args = self._methods[__method_name].method_args
@@ -205,13 +292,14 @@ class Module(object):
             # check for unknown kwargs
             for name, value in kwargs.items():
                 if name not in method_args:
-                    raise ModuleMethodError('unknown argument "{}" passed'.format(name))
+                    raise ModuleMethodError('unknown argument'
+                                            ' "{}" passed'.format(name))
 
             return_value = None
             try:
                 if self._methods[__method_name].method_call is not None:
                     return_value =\
-                                   self._methods[__method_name].method_call(**kwargs)
+                        self._methods[__method_name].method_call(**kwargs)
                 else:
                     return_value = None
             except Exception:
@@ -226,14 +314,12 @@ class Module(object):
 
     @classmethod
     def get_module_type(cls):
-        """Returns module type (identifier from description)
-        """
+        """Return module type (identifier from description)."""
         return cls._module_desc.arg_name
 
     @classmethod
     def get_module_info(cls):
-        """Returns a dictionary contaning basic module description
-        """
+        """Return a dictionary contaning basic module description."""
         # return some information (serializable)
         module_info = {}
         module_info['module_type'] = cls._module_desc.arg_name
@@ -243,14 +329,24 @@ class Module(object):
 
     @staticmethod
     def build_module_descr(mod_info):
-        """Builds the description structure from a dictionary
+        """Build the description structure from a dictionary.
+
+        Args
+        ----
+        mod_info: dict
+            dictionary containing information
         """
         return ModuleArgument(arg_name=mod_info['module_type'],
                               arg_help=mod_info['module_desc'])
 
     @staticmethod
     def build_module_property_list(mod_prop):
-        """Builds the property list structure from a dictionary
+        """Build the property list structure from a dictionary.
+
+        Args
+        ----
+        mod_prop: dict
+            Name-indexed dictionary of property descriptions
         """
         property_list = {}
 
@@ -264,7 +360,12 @@ class Module(object):
 
     @staticmethod
     def build_module_method_list(mod_methods):
-        """Builds the method list structure from a dictionary
+        """Build the method list structure from a dictionary.
+
+        Args
+        ----
+        mod_methods: dict
+            Name-indexed dictionary of method descriptions
         """
         method_list = {}
 
@@ -285,7 +386,12 @@ class Module(object):
 
     @staticmethod
     def build_module_structure(mod_struct):
-        """Returns all the basic module structures, built from a complete dictionary
+        """Return all the basic module structures, built from a complete dictionary.
+
+        Args
+        ----
+        mod_struct: dict
+            Module structure dictionary
         """
         mod_descr = Module.build_module_descr(mod_struct['module_desc'])
         mod_props =\
@@ -297,15 +403,18 @@ class Module(object):
 
     @staticmethod
     def build_module_structure_from_file(filename):
-        """Returns the basic module structures, built from
-           the contents of a JSON description file
+        """Return the basic module structures, built from JSON file.
+
+        Args
+        ----
+        filename: str
+           File path
         """
         return Module.build_module_structure(read_json_from_file(filename))
 
     @classmethod
     def get_module_properties(cls):
-        """Returns a list of the module's properties as a dictionary
-        """
+        """Return a list of the module's properties as a dictionary."""
         property_list = {}
 
         for property_name, prop in cls._properties.items():
@@ -321,8 +430,7 @@ class Module(object):
 
     @classmethod
     def get_module_methods(cls):
-        """Returns all the module's methods as a dictionary
-        """
+        """Return all the module's methods as a dictionary."""
         method_list = {}
 
         for method_name, method in cls._methods.items():
@@ -349,8 +457,7 @@ class Module(object):
 
     @classmethod
     def dump_module_structure(cls):
-        """Dumps the module's description structure as a JSON-serializable dictionary
-        """
+        """Dump the module's description as a JSON-serializable dictionary."""
         struct_dict = {}
         struct_dict['module_desc'] = cls.get_module_info()
         struct_dict['module_properties'] = cls.get_module_properties()
@@ -360,13 +467,21 @@ class Module(object):
 
     @classmethod
     def read_module_structure(cls, module_desc):
-        """Uninmplemented?
-        """
+        """Uninmplemented."""
         return
 
     def _automap_methods(self, protected_methods=True):
-        """Automatically connect property descriptions
-           to methods in the class declaration
+        """Automatically connect property descriptions.
+
+        Connects to methods in the class declaration with the naming
+        convention as follows:
+        Getter => _get_PROPERTYNAME()
+        Setter => _set_PROPERTYNAME()
+
+        Args
+        ----
+        protected_methods: bool
+            connects to methods with underscore
         """
         for method_name, method in self._methods.items():
             if protected_methods:
@@ -378,8 +493,13 @@ class Module(object):
                 pass
 
     def _automap_properties(self, protected_methods=True):
-        """Automatically connect method descriptions
-           to methods in the class declaration
+        """Automatically connect method descriptions.
+
+        Connects to methods of same name in the class declaration
+        Args
+        ----
+        protected_methods: bool
+            connects to methods with underscore
         """
         for prop_name, prop in self._properties.items():
             # search for object methods
@@ -402,7 +522,8 @@ class Module(object):
 
     @classmethod
     def get_multi_inst_suffix(self):
-        """Module-specific: should return a specific suffix
-           to be used if loading a multi-instance enabled module
+        """Module-specific: should return a specific suffix.
+
+        To be used if loading a multi-instance enabled module
         """
         return None
