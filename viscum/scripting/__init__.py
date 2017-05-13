@@ -398,7 +398,7 @@ class CodeSanitizer(ast.NodeTransformer):
         """
         raise ScriptSyntaxError('import statements are not allowed')
 
-    def visit_Print(self, node):
+    def visit_Call(self, node):
         """Visit print statements.
 
         Args
@@ -407,15 +407,15 @@ class CodeSanitizer(ast.NodeTransformer):
             A node being visited
         """
         # replace print statement with module manager-based logging
-        return ast.copy_location(ast.Expr(
-            value=ast.Call(
-                func=ast.Name(id='_print_statement',
-                              ctx=ast.Load()),
-                args=node.values,
-                keywords=[],
-                starargs=None,
-                kwargs=None)),
-            node)
+        if node.func.id != 'print':
+            return node
+
+        return ast.copy_location(
+                ast.Call(
+                    func=ast.Name(id='_print_statement',
+                                  ctx=ast.Load()),
+                    args=node.args,
+                    keywords=[]), node)
 
     def visit_While(self, node):
         """Visit while statements.
