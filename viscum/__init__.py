@@ -899,7 +899,7 @@ class ModuleManager(object):
                     self._install_custom_method(first_argument,
                                                 second_argument,
                                                 which_module)
-                except MethodAlreadyInstalledError:
+                except MethodAlreadyInstalledError as ex:
                     self.loaded_modules[which_module].handler_communicate(reason='install_method_failed',
                                                                           exception=ex)
 
@@ -914,7 +914,7 @@ class ModuleManager(object):
                     self._install_interrupt_handler(first_argument,
                                                     second_argument,
                                                     which_module)
-                except InterruptAlreadyInstalledError:
+                except InterruptAlreadyInstalledError as ex:
                     self.loaded_modules[which_module].handler_communicate(reason='install_interrupt_failed',
                                                                           exception=ex)
 
