@@ -448,6 +448,7 @@ class ModuleProxy(object):
 
     def get_available_instances(self):
         """Return available instances."""
+        module_type, _ = self._get_instance_id()
         return self._modman.get_instance_list_by_type(self._modname)
 
     def get_instance(self, instance_name):
@@ -458,23 +459,23 @@ class ModuleProxy(object):
         instance_name: str
            Instance name
         """
-        _instance_name = '{}-{}'.format(self._modname, instance_name)
-        if _instance_name in self.get_available_instances():
-            return ModuleProxy(self._modname, self._modman, instance_name)
+        module_type, _ = self._get_instance_id()
+        mod_cap = self._modman.get_module_capabilities(module_type)
 
+        if mod_cap is not None:
+            if ModCap.MultiInstanceAllowed in mod_cap:
+                _instance_name = '{}-{}'.format(module_type, instance_name)
+            else:
+                _instance_name = instance_name
+            if _instance_name in self.get_available_instances():
+                return ModuleProxy(self._modname, self._modman, instance_name)
+
+        # if we reach here, then the module or instance is not loaded.
         raise DeferScriptLoading({'type': self._modname,
                                   'inst': instance_name})
 
-    def __getattr__(self, name):
-        """Search for the requested attribute.
-
-        look into properties and methods
-        Args
-        ----
-        name: str
-            Attribute name (property or method)
-        """
-        # try to get instance name
+    def _get_instance_id(self):
+        """Retrieve instance name."""
         if self._instname is None:
             name_parts = self._modname.split('__')
             module_type = name_parts[0]
@@ -488,6 +489,19 @@ class ModuleProxy(object):
             instance_name = self._instname
             instance_name = '{}-{}'.format(module_type, instance_name)
 
+        return (module_type, instance_name)
+
+    def __getattr__(self, name):
+        """Search for the requested attribute.
+
+        look into properties and methods
+        Args
+        ----
+        name: str
+            Attribute name (property or method)
+        """
+        # try to get instance name
+        module_type, instance_name = self._get_instance_id()
         property_list = self._modman.get_module_property_list(module_type)
         method_list = self._modman.get_module_method_list(module_type)
 
