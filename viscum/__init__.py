@@ -11,7 +11,13 @@ from viscum.plugin.exception import (ModuleLoadError,
                                      ModuleMethodError,
                                      ModulePropertyPermissionError,
                                      ModuleInvalidPropertyError)
-from viscum.exception import *
+from viscum.exception import (InterruptAlreadyInstalledError,
+                              MethodNotAvailableError,
+                              HookNotAvailableError,
+                              CannotUnloadError,
+                              HookAlreadyInstalledError,
+                              MethodAlreadyInstalledError,
+                              DeferModuleDiscovery)
 from viscum.hook import (ModuleManagerHook,
                          ModuleManagerHookActions)
 from viscum.scripting import (ModuleManagerScript,
