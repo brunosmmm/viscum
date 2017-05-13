@@ -1,5 +1,4 @@
-""" Plugin manager
-"""
+"""Viscum: a Plugin manager."""
 
 import imp
 import logging
@@ -32,8 +31,16 @@ MODULE_HANDLER_LOGGING_KWARGS = ['log_info', 'log_warning', 'log_error']
 
 # helper functions
 def handle_multiple_instance(module_name, loaded_module_list):
-    """Handle multiple instance plugin loading,
-       returns suffix based on instance count
+    """Handle multiple instance plugin loading.
+
+    Args
+    ----
+    module_name: str
+       Module type
+    loaded_module_list: list
+       list of currently loaded modules
+
+    returns suffix based on instance count
     """
     instance_list = []
     for module in loaded_module_list:
@@ -46,14 +53,25 @@ def handle_multiple_instance(module_name, loaded_module_list):
 
     return sorted(instance_list)[-1] + 1
 
+
 ModuleManagerMethod = namedtuple('ModuleManagerMethod', ['call', 'owner'])
 HookAttacher = namedtuple('HookAttacher', ['callback', 'action', 'argument'])
 
 
 class ModuleManager(object):
-    """Module manager class"""
-    def __init__(self, central_log, plugin_path, script_path):
+    """Module manager class."""
 
+    def __init__(self, central_log, plugin_path, script_path):
+        """
+        Args
+        ----
+        central_log: str
+            Logger name
+        plugin_path: str
+            Location where plugins are stored
+        script_path:
+            Location where scripts are stored
+        """
         self.found_modules = {}
         self.loaded_modules = {}
         self.logger = logging.getLogger('{}.drvman'.format(central_log))
@@ -84,19 +102,29 @@ class ModuleManager(object):
         self.deferred_scripts = {}
 
     def module_system_tick(self):
-        """Timer function called by main loop
-        """
+        """Timer function called by main loop."""
         self.tick_counter += 1
         self._trigger_manager_hook('modman.tick', uptime=self.tick_counter)
 
     def install_custom_hook(self, hook_name):
-        """Installs a custom hook into the manager system
+        """Install a custom hook into the manager system.
+
+        Args
+        ----
+        hook_name: str
+            Hook name
         """
         self._install_custom_hook(hook_name)
 
     def _install_custom_hook(self, hook_name, installed_by='modman'):
-        """Inner function to actually install the custom hook, with
-           owner information
+        """Inner function to actually install the custom hook.
+
+        Args
+        ----
+        hook_name: str
+           Hook name
+        installed_by: str
+           Module instance name, owner of callback
         """
         if hook_name in self.custom_hooks:
             raise HookAlreadyInstalledError('hook is already installed')
@@ -105,14 +133,29 @@ class ModuleManager(object):
         self.custom_hooks[hook_name] = ModuleManagerHook(installed_by)
 
     def install_custom_method(self, method_name, callback):
-        """Install a custom method, made available to all loaded modules
+        """Install a custom method, made available to all loaded modules.
+
+        Args
+        ----
+        method_name: str
+           Method Name
+        callback: function
+           Callback function
         """
         self._install_custom_method(method_name, callback)
 
     def _install_custom_method(self, method_name,
                                callback, installer='modman'):
-        """Inner function to install the custom method, with
-           owner information
+        """Inner function to install the custom method.
+
+        Args
+        ----
+        method_name: str
+            Method name
+        callback: function
+            Callback function
+        intaller: str
+            Module instance name, owner of callback
         """
         if method_name in self.custom_methods:
             raise MethodAlreadyInstalledError('method is already installed')
@@ -123,7 +166,16 @@ class ModuleManager(object):
                                                                owner=installer)
 
     def call_custom_method(self, method_name, *args, **kwargs):
-        """Calls a custom method, if available
+        """Call a custom method, if available.
+
+        Args
+        ----
+        method_name: str
+            Method name
+        args: list
+            Positional arguments to be passed to method
+        kwargs: dict
+            Keyword arguments to be passed to method
         """
         if method_name in self.custom_methods:
             return self.custom_methods[method_name].call(*args, **kwargs)
@@ -131,13 +183,26 @@ class ModuleManager(object):
         raise MethodNotAvailableError('requested method is not available')
 
     def attach_custom_hook(self, attach_to, callback, action, argument):
-        """Attaches a callback to a custom hook, if available
+        """Attach a callback to a custom hook, if available.
+
+        Args
+        ----
+        attach_to: str
+            Hook name
+        callback: function
+            Callback function called on hook triggered
+        action: ModuleManagerHookActions
+            Action to be performed on trigger event
+        argument: list, dict
+            Arguments passed to callback
         """
         if attach_to in self.custom_hooks:
-            self.custom_hooks[attach_to].attach_callback(HookAttacher(callback=callback,
-                                                                      action=action,
-                                                                      argument=argument))
-            self.logger.debug('callback {} installed into custom hook {} with action {}'
+            self.custom_hooks[attach_to].attach_callback(
+                                        HookAttacher(callback=callback,
+                                                     action=action,
+                                                     argument=argument))
+            self.logger.debug('callback {} installed into '
+                              'custom hook {} with action {}'
                               .format(callback,
                                       attach_to,
                                       action))
