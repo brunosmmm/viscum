@@ -1,0 +1,19 @@
+{
+    "module_desc": {
+        "module_type": "hbusdummy",
+        "module_desc": "Dummy HBUS slave driver"
+    },
+    "module_methods": {},
+    "module_properties": {
+        "dummyobj1": {
+            "permissions": 0,
+            "data_type": null,
+            "property_desc": "dummy object 1"
+        },
+        "dummyobj2": {
+            "permissions": 0,
+            "data_type": null,
+            "property_desc": "dummy object 2"
+        }
+    }
+}

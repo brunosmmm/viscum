@@ -1,0 +1,52 @@
+{
+    "module_properties": {
+        "node_element": {
+            "permissions": 0,
+            "data_type": 2,
+            "property_desc": "Node identifying element"
+        },
+        "node_plugins": {
+            "permissions": 0,
+            "data_type": 6,
+            "property_desc": "Plugins active at node side"
+        }
+    },
+    "module_methods": {
+        "call_plugin_method": {
+            "method_args": {
+                "instance_name": {
+                    "arg_desc": "Plugin instance name",
+                    "arg_required": true,
+                    "arg_dtype": 2
+                },
+                "method_name": {
+                    "arg_desc": "Method name",
+                    "arg_required": true,
+                    "arg_dtype": 2
+                },
+                "method_args": {
+                    "arg_desc": "Method arguments",
+                    "arg_required": false,
+                    "arg_dtype": 9
+                }
+            },
+            "method_desc": "Call a method provided by a node plugin",
+            "method_return": 6
+        },
+        "inspect_plugin": {
+            "method_args": {
+                "instance_name": {
+                    "arg_desc": "Plugin instance name",
+                    "arg_required": true,
+                    "arg_dtype": 2
+                }
+            },
+            "method_desc": "Inspect plugin structure",
+            "method_return": 9
+        }
+    },
+    "module_desc": {
+        "module_type": "ppnode",
+        "module_desc": "PeriodicPi Node driver"
+    }
+}

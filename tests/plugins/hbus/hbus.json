@@ -1,0 +1,82 @@
+{
+    "module_methods": {
+        "slave_info": {
+            "method_args": {
+                "slave_uid": {
+                    "arg_desc": "slave UID",
+                    "arg_dtype": null,
+                    "arg_required": true
+                }
+            },
+            "method_desc": "Get general information from slave",
+            "method_return": 0
+        },
+        "list_slave_objects":
+        {
+            "method_args": {
+                "slave_uid": {
+                    "arg_desc": "slave UID",
+                    "arg_dtype": null,
+                    "arg_required": true
+                }
+            },
+            "method_desc": "List object information",
+            "method_return": 0
+        },
+        "read_object_value":
+        {
+            "method_args": {
+                "slave_address": {
+                    "arg_desc": "slave current address",
+                    "arg_dtype": null,
+                    "arg_required": true
+                },
+                "object_index": {
+                    "arg_desc": "requested object index",
+                    "arg_dtype": null,
+                    "arg_required": true
+                }
+            },
+            "method_desc": "get current value for a device object",
+            "method_return": 0
+        },
+        "write_object_value":
+        {
+            "method_args": {
+                "slave_address": {
+                    "arg_desc": "slave current address",
+                    "arg_dtype": null,
+                    "arg_required": true
+                },
+                "object_index": {
+                    "arg_desc": "requested object index",
+                    "arg_dtype": null,
+                    "arg_required": true
+                },
+                "object_value": {
+                    "arg_desc": "value to set",
+                    "arg_dtype": null,
+                    "arg_required": true
+                }
+            },
+            "method_desc": "set current value for a device object",
+            "method_return": 0
+        }
+    },
+    "module_properties": {
+        "active_busses": {
+            "permissions": 0,
+            "data_type": null,
+            "property_desc": "List of currently active busses"
+        },
+        "active_slaves": {
+            "permissions": 0,
+            "data_type": null,
+            "property_desc": "List of currently active slaves"
+        }
+    },
+    "module_desc": {
+        "module_type": "hbus",
+        "module_desc": "HBUS server bridge"
+    }
+}

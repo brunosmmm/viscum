@@ -1,0 +1,31 @@
+{
+    "module_desc": {
+        "module_type": "bdp150",
+        "module_desc": "BDP150 driver"
+    },
+    "module_properties": {
+        "power_state": {
+            "permissions": 2,
+            "data_type": null,
+            "property_desc": "Current player power state"
+        },
+        "tray": {
+            "permissions": 2,
+            "data_type": null,
+            "property_desc": "Current disc tray state"
+        }
+    },
+    "module_methods": {
+        "send_remote_key": {
+            "method_args": {
+                "key_name": {
+                    "arg_desc": "remote key name to emulate",
+                    "arg_dtype": null,
+                    "arg_required": true
+                }
+            },
+            "method_desc": "Emulates a keypress on the remote",
+            "method_return": null
+        }
+    }
+}

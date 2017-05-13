@@ -1,0 +1,79 @@
+{
+    "module_desc": {
+        "module_type": "rokutv",
+        "module_desc": "rokuTV driver"
+    },
+    "module_properties": {},
+    "module_methods": {
+        "send_remote_key": {
+            "method_args": {
+                "key_name": {
+                    "arg_desc": "remote key name to emulate",
+                    "arg_dtype": null,
+                    "arg_required": true
+                }
+            },
+            "method_desc": "Emulates a keypress on the remote",
+            "method_return": null
+        },
+        "start_key_press": {
+            "method_args": {
+                "key_name": {
+                    "arg_desc": "remote key name to emulate",
+                    "arg_dtype": null,
+                    "arg_required": true
+                }
+            },
+            "method_desc": "Stars a continuous keypress",
+            "method_return": null
+        },
+        "stop_key_press": {
+            "method_args": {
+                "key_name": {
+                    "arg_desc": "remote key name to emulate",
+                    "arg_dtype": null,
+                    "arg_required": true
+                }
+            },
+            "method_desc": "Ends a continuous keypress",
+            "method_return": null
+        },
+        "list_apps": {
+            "method_args": {},
+            "method_desc": "List available apps on TV",
+            "method_return": 0
+        },
+        "launch_app": {
+            "method_args": {
+                "app_id": {
+                    "arg_desc": "App ID",
+                    "arg_required": true,
+                    "arg_dtype": null
+                },
+                "content_id": {
+                    "arg_desc": "App content ID",
+                    "arg_required": false,
+                    "arg_dtype": null
+                }
+            },
+            "method_desc": "Launch an App",
+            "method_return": null
+        },
+        "query_device_info": {
+            "method_args": {},
+            "method_desc": "Queries device info",
+            "method_return": 0
+        },
+        "send_text_key": {
+            "method_args": {
+                "char": {
+                    "arg_desc": "character to send",
+                    "arg_required": "true",
+                    "arg_dtype": null
+                }
+            },
+            "method_desc": "Sends characters for the on-screen keyboard",
+            "method_return": null
+        }
+    }
+}

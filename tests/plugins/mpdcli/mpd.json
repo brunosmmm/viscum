@@ -1,0 +1,62 @@
+{
+    "module_methods": {
+        "next": {
+            "method_args": {},
+            "method_desc": "Play next song",
+            "method_return": null
+        },
+        "previous": {
+            "method_args": {},
+            "method_desc": "Play previous song",
+            "method_return": null
+        },
+        "stop": {
+            "method_args": {},
+            "method_desc": "Stops playback",
+            "method_return": null
+        },
+        "pause":
+        {
+            "method_args": {
+                "resume": {
+                    "arg_desc": "Resume playback / pause",
+                    "arg_required": true,
+                    "arg_dtype": null
+                }
+            },
+            "method_desc": "Pause / resume playback",
+            "method_return": null
+        }
+    },
+    "module_properties": {
+        "random" : {
+            "permissions": 2,
+            "data_type": null,
+            "property_desc": "Random play order"
+        },
+        "repeat" : {
+            "permissions": 2,
+            "data_type": null,
+            "property_desc": "Repeat song"
+        },
+        "single" : {
+            "permissions": 2,
+            "data_type": null,
+            "property_desc": "Stop after the current song"
+        },
+        "volume" : {
+            "permissions": 2,
+            "data_type": null,
+            "property_desc": "Output volume"
+        },
+        "state" : {
+            "permissions": 0,
+            "data_type": null,
+            "property_desc": "Player state"
+        }
+    },
+    "module_desc": {
+        "module_type": "mpd",
+        "module_desc": "MPD client driver"
+    }
+}

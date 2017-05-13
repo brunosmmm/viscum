@@ -1,0 +1,84 @@
+{
+  "module_methods": {
+    "stop_key_press": {
+      "method_args": {
+        "remote_name": {
+          "arg_desc": "Remote name",
+          "arg_dtype": 2,
+          "arg_required": true
+        },
+        "key_name": {
+          "arg_desc": "Key name",
+          "arg_dtype": 2,
+          "arg_required": true
+        },
+          "repeat_count": {
+              "arg_desc": "Repeat count",
+              "arg_dtype": 0,
+              "arg_required": false
+          }
+      },
+      "method_desc": "Stop sending repeated keypresses",
+      "method_return": null
+    },
+    "start_key_press": {
+      "method_args": {
+        "remote_name": {
+          "arg_desc": "Remote name",
+          "arg_dtype": 2,
+          "arg_required": true
+        },
+        "key_name": {
+          "arg_desc": "Key name",
+          "arg_dtype": 2,
+          "arg_required": true
+        }
+      },
+      "method_desc": "Start sending repeated keypresses",
+      "method_return": null
+    },
+    "send_remote_key": {
+      "method_args": {
+        "remote_name": {
+          "arg_desc": "Remote name",
+          "arg_dtype": 2,
+          "arg_required": true
+        },
+        "key_name": {
+          "arg_desc": "Key name",
+          "arg_dtype": 2,
+          "arg_required": true
+        }
+      },
+      "method_desc": "Send a single remote control keypress",
+      "method_return": null
+    },
+    "get_remote_actions": {
+      "method_args": {
+        "remote_name": {
+          "arg_desc": "Remote name",
+          "arg_dtype": 2,
+          "arg_required": true
+        }
+      },
+      "method_desc": "Retrieve available remote actions",
+      "method_return": 6
+    }
+  },
+  "module_properties": {
+    "version": {
+      "permissions": 0,
+      "data_type": 2,
+      "property_desc": "Module Version"
+    },
+    "avail_remotes": {
+      "permissions": 0,
+      "data_type": 6,
+      "property_desc": "Available Remotes"
+    }
+  },
+    "module_desc": {
+        "module_type" : "lircd",
+        "module_desc": "lircd client driver"
+  }
+}

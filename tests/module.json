@@ -1,0 +1,61 @@
+{
+    "module_methods": {
+        "increment_volume": {
+            "method_args": {},
+            "method_desc": "Increments volume",
+            "method_return": null
+        },
+        "decrement_volume": {
+            "method_args": {},
+            "method_desc": "Decrements volume",
+            "method_return": null
+        },
+        "send_remote_key": {
+            "method_args": {
+                "key_name": {
+                    "arg_desc": "remote key name to emulate",
+                    "arg_dtype": null,
+                    "arg_required": true
+                }
+            },
+            "method_desc": "Emulates a keypress on the remote",
+            "method_return": null
+        }
+    },
+    "module_properties": {
+        "volume": {
+            "permissions": 2,
+            "data_type": 2,
+            "property_desc": "Main Zone Volume"
+        },
+        "volume2": {
+            "permissions": 2,
+            "data_type": 2,
+            "property_desc": "Zone 2 Volume"
+        },
+        "main_on": {
+            "permissions": 2,
+            "data_type": 2,
+            "property_desc": "Main zone ON/OFF"
+        },
+        "zone_on": {
+            "permissions": 2,
+            "data_type": 2,
+            "property_desc": "Zone 2 ON/OFF"
+        },
+        "zone_input": {
+            "permissions": 2,
+            "data_type": 2,
+            "property_desc": "Zone 2 Source"
+        },
+        "main_input": {
+            "permissions": 2,
+            "data_type": 2,
+            "property_desc": "Main zone Source"
+        }
+    },
+    "module_desc": {
+        "module_type" : "yrx",
+        "module_desc": "Yamaha receiver driver"
+  }
+}
