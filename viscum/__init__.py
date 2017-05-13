@@ -636,43 +636,69 @@ class ModuleManager(object):
                 return None
 
             if kwg == 'call_custom_method':
+
+                # parse value:
+                if isinstance(value, (list, tuple)):
+                    first_argument = value[0]
+                    second_argument = value[1]
+                elif isinstance(value, dict):
+                    first_argument = value['method']
+                    second_argument = value['args']
                 try:
-                    return self.call_custom_method(value[0], *value[1])
+                    return self.call_custom_method(first_argument, *second_argument)
                 except MethodNotAvailableError as ex:
                     self.logger.debug('module "{}" tried to call '
                                       'invalid method: "{}"'
-                                      .format(which_module, value[0]))
+                                      .format(which_module, first_argument))
                     self.loaded_modules[which_module].handler_communicate(reason='call_method_failed',
                                                                           exception=ex)
                     return None
 
             if kwg == 'attach_custom_hook':
+                if isinstance(value, (list, tuple)):
+                    first_argument = value[0]
+                    second_argument = value[1]
+                elif isinstance(value, dict):
+                    first_argument = value['hook']
+                    second_argument = value['args']
                 try:
-                    self.attach_custom_hook(value[0],
-                                            *value[1])
+                    self.attach_custom_hook(first_argument,
+                                            *second_argument)
                 except HookNotAvailableError as ex:
                     self.logger.debug('module "{}" tried to attach '
                                       'to invalid hook: "{}"'
-                                      .format(which_module, value[0]))
+                                      .format(which_module, first_argument))
                     self.loaded_modules[which_module].handler_communicate(reason='attach_hook_failed',
                                                                           exception=ex)
 
             if kwg == 'attach_manager_hook':
+                if isinstance(value, (list, tuple)):
+                    first_argument = value[0]
+                    second_argument = value[1]
+                elif isinstance(value, dict):
+                    first_argument = value['hook']
+                    second_argument = value['args']
                 try:
-                    self.attach_manager_hook(value[0],
-                                             *value[1])
+                    self.attach_manager_hook(first_argument,
+                                             *second_argument)
                 except HookNotAvailableError as ex:
                     self.logger.debug('module "{}" tried to attach '
                                       'to invalid hook: "{}"'
-                                      .format(which_module, value[0]))
+                                      .format(which_module, first_argument))
                     self.loaded_modules[which_module].handler_communicate(reason='attach_hook_failed',
                                                                           exception=ex)
 
             if kwg == 'load_module':
+                if isinstance(value, (list, tuple)):
+                    first_argument = value[0]
+                    second_argument = value[1]
+                elif isinstance(value, dict):
+                    first_argument = value['method']
+                    second_argument = value['args']
                 try:
-                    return self._load_module(value[0],
+                    return self._load_module(first_argument,
                                              which_module,
-                                             **value[1])
+                                             **second_argument)
                 except (ModuleLoadError, ModuleAlreadyLoadedError) as ex:
                     self.loaded_modules[which_module].handler_communicate(reason='load_module_failed',
                                                                           exception=ex)
@@ -694,18 +720,30 @@ class ModuleManager(object):
                                                                           exception=ex)
 
             if kwg == 'install_custom_method':
+                if isinstance(value, (list, tuple)):
+                    first_argument = value[0]
+                    second_argument = value[1]
+                elif isinstance(value, dict):
+                    first_argument = value['method']
+                    second_argument = value['callback']
                 try:
-                    self._install_custom_method(value[0],
-                                                value[1],
+                    self._install_custom_method(first_argument,
+                                                second_argument,
                                                 which_module)
                 except MethodAlreadyInstalledError:
                     self.loaded_modules[which_module].handler_communicate(reason='install_method_failed',
                                                                           exception=ex)
 
             if kwg == 'install_interrupt_handler':
+                if isinstance(value, (list, tuple)):
+                    first_argument = value[0]
+                    second_argument = value[1]
+                elif isinstance(value, dict):
+                    first_argument = value['interrupt']
+                    second_argument = value['callback']
                 try:
-                    self._install_interrupt_handler(value[0],
-                                                    value[1],
+                    self._install_interrupt_handler(first_argument,
+                                                    second_argument,
                                                     which_module)
                 except InterruptAlreadyInstalledError:
                     self.loaded_modules[which_module].handler_communicate(reason='install_interrupt_failed',
