@@ -647,7 +647,7 @@ class ModuleManager(object):
                 try:
                     return self.call_custom_method(first_argument, *second_argument)
                 except MethodNotAvailableError as ex:
-                    self.logger.debug('module "{}" tried to call '
+                    self.logger.error('module "{}" tried to call '
                                       'invalid method: "{}"'
                                       .format(which_module, first_argument))
                     self.loaded_modules[which_module].handler_communicate(reason='call_method_failed',
@@ -665,7 +665,7 @@ class ModuleManager(object):
                     self.attach_custom_hook(first_argument,
                                             *second_argument)
                 except HookNotAvailableError as ex:
-                    self.logger.debug('module "{}" tried to attach '
+                    self.logger.error('module "{}" tried to attach '
                                       'to invalid hook: "{}"'
                                       .format(which_module, first_argument))
                     self.loaded_modules[which_module].handler_communicate(reason='attach_hook_failed',
@@ -682,7 +682,7 @@ class ModuleManager(object):
                     self.attach_manager_hook(first_argument,
                                              *second_argument)
                 except HookNotAvailableError as ex:
-                    self.logger.debug('module "{}" tried to attach '
+                    self.logger.error('module "{}" tried to attach '
                                       'to invalid hook: "{}"'
                                       .format(which_module, first_argument))
                     self.loaded_modules[which_module].handler_communicate(reason='attach_hook_failed',
