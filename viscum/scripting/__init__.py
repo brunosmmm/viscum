@@ -1,31 +1,18 @@
-"""Scripting with python & module manager objects
-"""
+"""Scripting with python & module manager objects."""
+
 import ast
 import symtable
 import codegen
 from viscum.plugin import ModuleCapabilities
 from viscum.hook import ModuleManagerHookActions
-
-
-class InvalidModuleError(Exception):
-    pass
-
-
-class DeferScriptLoading(Exception):
-    pass
-
-
-class ScriptSyntaxError(Exception):
-    pass
-
-
-class CancelScriptLoading(Exception):
-    pass
+from viscum.scripting.exception import (InvalidModuleError,
+                                        DeferScriptLoading,
+                                        ScriptSyntaxError,
+                                        CancelScriptLoading)
 
 
 class ModuleManagerScript(object):
-    """Script parser and container class
-    """
+    """Script parser and container class."""
 
     def __init__(self, source_file, module_manager, initialize=False):
 
