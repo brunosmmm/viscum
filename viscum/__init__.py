@@ -62,7 +62,8 @@ class ModuleManager(object):
     """Module manager class."""
 
     def __init__(self, central_log, plugin_path, script_path):
-        """
+        """Initialize.
+
         Args
         ----
         central_log: str
@@ -198,9 +199,9 @@ class ModuleManager(object):
         """
         if attach_to in self.custom_hooks:
             self.custom_hooks[attach_to].attach_callback(
-                                        HookAttacher(callback=callback,
-                                                     action=action,
-                                                     argument=argument))
+                HookAttacher(callback=callback,
+                             action=action,
+                             argument=argument))
             self.logger.debug('callback {} installed into '
                               'custom hook {} with action {}'
                               .format(callback,
@@ -211,13 +212,26 @@ class ModuleManager(object):
         raise HookNotAvailableError('the requested hook is not available')
 
     def attach_manager_hook(self, attach_to, callback, action, driver_class):
-        """Attaches a callback to a manager default hook
+        """Attach a callback to a manager default hook.
+
+        Args
+        ----
+        attach_to: str
+           Hook name
+        callback: function
+           Callback function called on hook triggered
+        action: ModuleManagerHookActions
+           Action to be performed on trigger event
+        driver_class: class
+           Plugin class as argument
         """
         if attach_to in self.attached_hooks:
-            self.attached_hooks[attach_to].attach_callback(HookAttacher(callback=callback,
-                                                                        action=action,
-                                                                        argument=driver_class))
-            self.logger.debug('callback {} installed into hook {} with action {}'
+            self.attached_hooks[attach_to].attach_callback(
+                HookAttacher(callback=callback,
+                             action=action,
+                             argument=driver_class))
+            self.logger.debug('callback {} installed into hook '
+                              '{} with action {}'
                               .format(callback,
                                       attach_to,
                                       action))
@@ -226,14 +240,29 @@ class ModuleManager(object):
         raise HookNotAvailableError('the requested hook is not available')
 
     def install_interrupt_handler(self, interrupt_key, callback):
-        """Installs a custom interrupt handler
+        """Install a custom interrupt handler.
+
+        Args
+        ----
+        interrupt_key: str
+            Interrupt name
+        callback: function
+            Interrupt callback
         """
         self._install_interrupt_handler(interrupt_key, callback)
 
     def _install_interrupt_handler(self, interrupt_key,
                                    callback, installer='modman'):
-        """Inner function to install a interrupt handler,
-           with owner information
+        """Inner function to install a interrupt handler.
+
+        Args
+        ----
+        interrupt_key: str
+            Interrupt name
+        callback: function
+            Interrupt callback
+        installer: str
+            Module or instance name that installed this interrupt
         """
         if interrupt_key in self.external_interrupts:
             raise InterruptAlreadyInstalledError('interrupt already installed')
@@ -241,23 +270,38 @@ class ModuleManager(object):
         self.logger.debug('custom interrupt "{}" was installed, calls "{}"'
                           .format(interrupt_key,
                                   callback))
-        self.external_interrupts[interrupt_key] = ModuleManagerMethod(call=callback,
-                                                                      owner=installer)
+        self.external_interrupts[interrupt_key] =\
+            ModuleManagerMethod(call=callback,
+                                owner=installer)
 
     def require_discovered_module(self, module_type):
-        """Require a certain module to be present at discovery time
-           if the module is not present (not discovered), then raises an
-           exception that ultimately defers the discovery until such
-           module is discovered
+        """Require a certain module to be present at discovery time.
+
+        if the module is not present (not discovered), then raises an
+        exception that ultimately defers the discovery until such
+        module is discovered
+        Args
+        ----
+        module_type: str
+            Type of the required module
         """
         if self.discovery_active:
             if module_type not in self.found_modules:
                 raise DeferModuleDiscovery(module_type)
 
     def insert_module(self, module_class):
-        self.found_modules[module_class.get_module_desc().arg_name] = module_class
+        """Manually insert a module class as a discovered plugin.
+
+        Args
+        ----
+        module_class: class
+            Class of the module
+        """
+        self.found_modules[module_class.get_module_desc().arg_name] =\
+            module_class
         self.logger.info('Manually '
-                         'inserting module "{}"'.format(module_class.get_module_desc().arg_name))
+                         'inserting module "{}"'
+                         .format(module_class.get_module_desc().arg_name))
 
     def _module_discovery(self, module):
         """Main module discovery routine, tries to load a module file
@@ -277,10 +321,12 @@ class ModuleManager(object):
             self.logger.info('inspecting module file: "{}"'.format(module))
             # guard discovery procedure
             self.discovery_active = True
+            plugin_path = os.path.join(self.plugin_path,
+                                       module)
             module_class = the_mod.discover_module(modman=self,
-                                                   plugin_path=os.path.join(self.plugin_path,
-                                                                            module))
-            self.found_modules[module_class.get_module_desc().arg_name] = module_class
+                                                   plugin_path=plugin_path)
+            module_type = module_class.get_module_desc().arg_name
+            self.found_modules[module_type] = module_class
             self.logger.info('Discovery of module "{}" succeeded'
                              .format(module_class.get_module_desc().arg_name))
             discovery_succeeded = True
@@ -293,7 +339,7 @@ class ModuleManager(object):
             # hacky
             self.deferred_discoveries[module] = ex.args[0]
         except Exception as error:
-            #raise  # debug
+            # raise  # debug
             # catch anything else because this cannot break the application
             self.logger.warning('could not register module {}: {}'
                                 .format(module, error))
@@ -316,8 +362,9 @@ class ModuleManager(object):
         self.discovery_active = False
 
     def discover_modules(self):
-        """Discovery routine wrapper, iterates through all found files in the
-           plugins subfolder
+        """Discovery routine wrapper.
+
+        Iterates through all found files in the plugins subfolder
         """
         module_root = imp.load_source('plugins', os.path.join(self.plugin_path,
                                                               '__init__.py'))
@@ -329,10 +376,16 @@ class ModuleManager(object):
         if len(self.deferred_discoveries) > 0:
             self.logger.warning('some modules could not be discovered because'
                                 ' they had dependencies that were not met: {}'
-                                .format(list(self.deferred_discoveries.keys())))
+                                .format(
+                                    list(self.deferred_discoveries.keys())))
 
     def _discover_script(self, script):
-        """Discovery process of a single script
+        """Discovery process of a single script.
+
+        Args
+        ----
+        script: str
+            script file path
         """
         try:
             self.scripts[script] = ModuleManagerScript(script,
@@ -344,13 +397,11 @@ class ModuleManager(object):
                               .format(script, str(ex)))
             # put on deferred list
             if ex.message['type'] not in self.deferred_scripts:
-                self.deferred_scripts[ex.message['type']] = {script:
-                                                             {'req_inst':
-                                                              ex.message['inst']}}
+                self.deferred_scripts[ex.message['type']] =\
+                    {script: {'req_inst': ex.message['inst']}}
             else:
-                self.deferred_scripts[ex.message['type']].update({script:
-                                                                  {'req_inst':
-                                                                   ex.message['inst']}})
+                self.deferred_scripts[ex.message['type']].update(
+                    {script: {'req_inst': ex.message['inst']}})
         except CancelScriptLoading as ex:
             self.logger.info('loading of script {} was canceled'
                              ' by the script with: {}'
@@ -360,15 +411,19 @@ class ModuleManager(object):
                                 .format(script, ex.message))
 
     def discover_scripts(self):
-        """Discover available scripts
-        """
+        """Discover available scripts."""
         script_files = glob.glob(os.path.join(self.script_path, '*.py'))
 
         for script in script_files:
             self._discover_script(script)
 
     def _is_module_type_present(self, module_class_name):
-        """Returns wether any module of a certain type has been loaded
+        """Return whether any module of a certain type has been loaded.
+
+        Args
+        ----
+        module_class_name: string
+            Module type
         """
         for mod_name, mod_obj in self.loaded_modules.items():
             if mod_obj.get_module_type() == module_class_name:
@@ -377,14 +432,30 @@ class ModuleManager(object):
         return False
 
     def load_module(self, module_name, **kwargs):
-        """Load module by type name, with named arguments
+        """Load module by type name, with named arguments.
+
+        Args
+        ----
+        module_name: str
+            Plugin name
+        kwargs: dict
+            Arguments passed to plugin
         """
-        self.logger.info('Trying to load module of type "{}"'.format(module_name))
+        self.logger.info('Trying to load module '
+                         'of type "{}"'.format(module_name))
         return self._load_module(module_name, **kwargs)
 
     def _load_module(self, module_name, loaded_by='modman', **kwargs):
-        """Load a module that has been previously
-           discovered, with owner information
+        """Load a module that has been previously discovered.
+
+        Args
+        ----
+        module_name: str
+            Plugin type
+        loaded_by: str
+            Instance that requested this to be loaded
+        kwargs: dict
+            Arguments passed to plugin
         """
         if module_name not in self.found_modules:
             raise ModuleLoadError('invalid module name: "{}"'
@@ -412,16 +483,23 @@ class ModuleManager(object):
             # handle multiple instances, append proper
             # suffix to the type name automatically
             if self.found_modules[module_name].get_multi_inst_suffix() is None:
+                loaded_module_list = self.loaded_modules.keys()
                 multi_inst_name = '{}-{}'.format(instance_name,
-                                                 handle_multiple_instance(instance_name,
-                                                                          list(self.loaded_modules.keys())))
+                                                 handle_multiple_instance(
+                                                     instance_name,
+                                                     loaded_module_list))
             else:
+                # get multi instance suffix
+                mi_s = self.found_modules[module_name].get_multi_inst_suffix()
                 multi_inst_name = '{}-{}'.format(instance_name,
-                                                 self.found_modules[module_name].get_multi_inst_suffix())
+                                                 mi_s)
 
-            self.loaded_modules[multi_inst_name] = self.found_modules[module_name](module_id=multi_inst_name,
-                                                                                   handler=self.module_handler,
-                                                                                   **kwargs)
+            # instantiate plugin
+            module_class = self.found_modules[module_name]
+            module_inst = module_class(module_id=multi_inst_name,
+                                       handler=self.module_handler,
+                                       **kwargs)
+            self.loaded_modules[multi_inst_name] = module_inst
             self.logger.info('Loaded module "{}" as "{}", loaded by "{}"'
                              .format(module_name, multi_inst_name, loaded_by))
             self._trigger_manager_hook('modman.module_loaded',
@@ -429,9 +507,10 @@ class ModuleManager(object):
             return multi_inst_name
 
         # load (create object)
-        self.loaded_modules[instance_name] = self.found_modules[module_name](module_id=instance_name,
-                                                                           handler=self.module_handler,
-                                                                           **kwargs)
+        mod_inst = self.found_modules[module_name](module_id=instance_name,
+                                                   handler=self.module_handler,
+                                                   **kwargs)
+        self.loaded_modules[instance_name] = mod_inst
 
         self.logger.info('Loaded module "{}" as "{}", loaded by "{}"'
                          .format(module_name, instance_name, loaded_by))
@@ -456,12 +535,16 @@ class ModuleManager(object):
         return instance_name
 
     def get_loaded_module_list(self):
-        """Returns a list of the loaded instance names
-        """
+        """Return a list of the loaded instance names."""
         return list(self.loaded_modules.keys())
 
     def get_instance_list_by_type(self, module_type):
-        """Returns a list of module instances (loaded) with the requested type
+        """Return a list of module instances (loaded) of requested type.
+
+        Args
+        ----
+        module_type: str
+            Plugin type
         """
         instances = []
         for inst_name, mod in self.loaded_modules.items():
@@ -471,7 +554,12 @@ class ModuleManager(object):
         return instances
 
     def get_instance_type(self, instance_name):
-        """Returns module type or descriptive error
+        """Return module type or descriptive error.
+
+        Args
+        ----
+        instance_name: str
+            Plugin instance name
         """
         if instance_name in self.loaded_modules:
             return self.loaded_modules[instance_name].get_module_type()
@@ -482,14 +570,24 @@ class ModuleManager(object):
                 'error': 'invalid_instance'}
 
     def get_module_capabilities(self, module_name):
-        """Returns module capabilities
+        """Return module capabilities.
+
+        Args
+        ----
+        module_name: str
+           Plugin type
         """
         if module_name in self.found_modules:
             return self.found_modules[module_name].get_capabilities()
 
     def get_module_structure(self, module_name):
-        """Retrieves the module's structure in a
-           JSON-serializable dictionary or descriptive error
+        """Retrieve the module's structure in a JSON-serializable dictionary.
+
+        Or descriptive error
+        Args
+        ----
+        module_name: str
+            Plugin type
         """
         if module_name in self.found_modules:
             return self.found_modules[module_name].dump_module_structure()
