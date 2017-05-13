@@ -414,7 +414,7 @@ class ModuleManager(object):
                              .format(script, ex.message))
         except Exception as ex:
             self.logger.warning('failed to load script {} with: {}'
-                                .format(script, ex.message))
+                                .format(script, ex))
 
     def discover_scripts(self):
         """Discover available scripts."""
