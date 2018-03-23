@@ -8,11 +8,10 @@ setup(
     packages=find_packages(),
     package_dir={'': '.'},
 
-    install_requires=[],
+    install_requires=['astor'],
 
     author="Bruno Morais",
     author_email="brunosmmm@gmail.com",
     description="Viscum Plugin Manager",
-
     scripts=[],
     )
